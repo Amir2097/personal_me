@@ -1,0 +1,60 @@
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+html,
+body,
+#__nuxt {
+  min-height: 100%;
+  margin: 0;
+  background-color: #0b0f10;
+}
+
+body {
+  color: #00ff88;
+  font-family: 'JetBrains Mono', monospace;
+  background-image: radial-gradient(circle at top, rgba(0, 255, 136, 0.08), transparent 35%);
+}
+
+.terminal-caret {
+  width: 10px;
+  height: 16px;
+  background-color: #00ff88;
+  animation: terminalBlink 1s steps(1, end) infinite;
+}
+
+.terminal-caret-amber {
+  width: 10px;
+  height: 16px;
+  background-color: #fbbf24;
+  animation: terminalBlink 1s steps(1, end) infinite;
+}
+
+.terminal-caret-blue {
+  width: 10px;
+  height: 16px;
+  background-color: #22d3ee;
+  animation: terminalBlink 1s steps(1, end) infinite;
+}
+
+.terminal-scroll::-webkit-scrollbar {
+  width: 8px;
+}
+
+.terminal-scroll::-webkit-scrollbar-thumb {
+  background: #2f3b45;
+  border-radius: 9999px;
+}
+
+@keyframes terminalBlink {
+  0%,
+  49% {
+    opacity: 1;
+  }
+  50%,
+  100% {
+    opacity: 0.1;
+  }
+}
