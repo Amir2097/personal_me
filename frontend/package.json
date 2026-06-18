@@ -5,17 +5,23 @@
   "scripts": {
     "dev": "nuxt dev --host",
     "build": "nuxt build",
-    "start": "nuxt start"
+    "start": "nuxt start",
+    "test": "nuxt prepare && vitest run",
+    "test:watch": "vitest"
   },
   "dependencies": {
+    "@pinia/nuxt": "^0.9.0",
     "nuxt": "^3.15.0",
     "pinia": "^2.3.0"
   },
   "devDependencies": {
     "@nuxtjs/tailwindcss": "^6.12.1",
+    "@vitejs/plugin-vue": "^5.2.1",
     "autoprefixer": "^10.4.20",
+    "happy-dom": "^15.11.7",
     "postcss": "^8.4.47",
     "tailwindcss": "^3.4.13",
-    "typescript": "^5.6.3"
+    "typescript": "^5.6.3",
+    "vitest": "^2.1.8"
   }
 }

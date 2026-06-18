@@ -1,48 +1,37 @@
 """Terminal command execution logic."""
 
+from sqlmodel import Session, select
+
+from app.models.user import User
 from app.schemas.terminal import TerminalCommandResponse
+from app.services.commands import admin_commands, builtin, integrations, projects  # noqa: F401
+from app.services.commands.context import CommandContext
+from app.services.commands.registry import dispatch_command
+from app.services.integration_service import load_integrations
 
-PUBLIC_COMMANDS = {"help", "clear", "login", "logout"}
-PRIVATE_COMMANDS = {"projects"}
 
+def execute_terminal_command(
+    command: str,
+    session: Session,
+    is_authenticated: bool,
+    username: str | None = None,
+) -> TerminalCommandResponse:
+    """Execute command through plugin registry."""
+    is_admin = False
+    if username:
+        user = session.exec(select(User).where(User.username == username)).first()
+        is_admin = bool(user and user.is_admin)
 
-def execute_terminal_command(command: str, is_authenticated: bool) -> TerminalCommandResponse:
-    """Execute command and return terminal-friendly output."""
     normalized = command.strip().lower()
-    if normalized == "help":
-        return TerminalCommandResponse(
-            command=command,
-            output="Available commands: help, login, register, logout, projects, clear",
-        )
-    if normalized == "clear":
-        return TerminalCommandResponse(command=command, output="__CLEAR__")
-    if normalized == "login":
-        return TerminalCommandResponse(
-            command=command,
-            output="Use /api/v1/auth/login endpoint to receive JWT token.",
-        )
-    if normalized == "register":
-        return TerminalCommandResponse(
-            command=command,
-            output="Use 'register <username> <password>' to create a user session.",
-        )
-    if normalized == "logout":
-        return TerminalCommandResponse(
-            command=command,
-            output="Use /api/v1/auth/logout endpoint with refresh_token.",
-        )
-    if normalized == "projects":
-        if not is_authenticated:
-            return TerminalCommandResponse(
-                command=command,
-                output="Authentication required. Run login first.",
-                requires_auth=True,
-            )
-        return TerminalCommandResponse(
-            command=command,
-            output="Projects: personal-me, cli-lab, infra-playground",
-        )
-    return TerminalCommandResponse(
+    parts = normalized.split()
+    ctx = CommandContext(
         command=command,
-        output=f"Unknown command: {normalized}. Type 'help'.",
+        normalized=normalized,
+        parts=parts,
+        is_authenticated=is_authenticated,
+        username=username,
+        is_admin=is_admin,
+        session=session,
+        integrations=load_integrations(session),
     )
+    return dispatch_command(ctx)

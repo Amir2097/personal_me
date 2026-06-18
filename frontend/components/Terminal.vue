@@ -1,11 +1,9 @@
 <script setup lang="ts">
 import { computed, nextTick, onMounted, ref, watch } from 'vue'
+import type { Project } from '~/composables/useApi'
 import { useApi } from '~/composables/useApi'
 import { useAuthStore } from '~/stores/auth'
 
-/**
- * Terminal line model used to render command history and backend output.
- */
 interface TerminalLine {
   type: 'input' | 'output' | 'error' | 'system'
   value: string
@@ -14,22 +12,14 @@ interface TerminalLine {
 
 type TerminalTheme = 'green' | 'amber' | 'blue'
 
-/**
- * Component props:
- * - prompt: terminal prompt prefix displayed before command input.
- */
-withDefaults(defineProps<{ prompt?: string }>(), {
-  prompt: 'guest@personal-me:~$'
-})
-
 const api = useApi()
 const auth = useAuthStore()
 const command = ref('')
 const lines = ref<TerminalLine[]>([
   {
     type: 'system',
-    value: "Boot sequence complete. Type 'help' to see available commands.",
-    timestamp: new Date().toLocaleTimeString()
+    value: "Загрузка завершена. Введите 'help' для списка команд.",
+    timestamp: new Date().toLocaleTimeString('ru-RU')
   }
 ])
 const history = ref<string[]>([])
@@ -37,10 +27,18 @@ const historyIndex = ref(-1)
 const busy = ref(false)
 const terminalEl = ref<HTMLElement | null>(null)
 const terminalLines = computed<TerminalLine[]>(() => lines.value)
-const prompt = computed(() => (auth.isAuthenticated ? 'admin@personal-me:~$' : 'guest@personal-me:~$'))
+const prompt = computed(() =>
+  auth.isAuthenticated
+    ? `${auth.username || 'user'}@personal-me:~$`
+    : 'guest@personal-me:~$'
+)
 const uptimeStart = new Date()
 const activeTab = ref<'terminal' | 'projects' | 'logs'>('terminal')
 const theme = ref<TerminalTheme>('green')
+const portfolioProjects = ref<Project[]>([])
+const portfolioLoading = ref(false)
+const showAuthModal = ref(false)
+const authModalMode = ref<'login' | 'register'>('login')
 
 const themeStyles = computed(() => {
   if (theme.value === 'amber') {
@@ -80,7 +78,7 @@ const addLine = (type: TerminalLine['type'], value: string) => {
   lines.value.push({
     type,
     value,
-    timestamp: new Date().toLocaleTimeString()
+    timestamp: new Date().toLocaleTimeString('ru-RU')
   })
 }
 
@@ -88,6 +86,17 @@ const scrollToBottom = async () => {
   await nextTick()
   if (terminalEl.value) {
     terminalEl.value.scrollTop = terminalEl.value.scrollHeight
+  }
+}
+
+const loadPortfolio = async () => {
+  portfolioLoading.value = true
+  try {
+    portfolioProjects.value = await api.listProjects()
+  } catch {
+    portfolioProjects.value = []
+  } finally {
+    portfolioLoading.value = false
   }
 }
 
@@ -101,18 +110,18 @@ const execute = async () => {
   command.value = ''
 
   if (raw === 'logout') {
-    if (!auth.refreshToken) {
-      addLine('error', 'You are not authenticated.')
+    if (!auth.isAuthenticated) {
+      addLine('error', 'Вы не авторизованы.')
       await scrollToBottom()
       return
     }
     try {
       busy.value = true
-      await api.logout(auth.refreshToken)
+      await api.logout()
       auth.logout()
-      addLine('output', 'Logged out successfully.')
+      addLine('output', 'Выход выполнен успешно.')
     } catch {
-      addLine('error', 'Logout request failed.')
+      addLine('error', 'Не удалось выполнить logout.')
     } finally {
       busy.value = false
       await scrollToBottom()
@@ -121,7 +130,7 @@ const execute = async () => {
   }
 
   if (raw === 'whoami') {
-    addLine('output', auth.isAuthenticated ? 'admin' : 'guest')
+    addLine('output', auth.isAuthenticated ? auth.username || 'user' : 'guest')
     await scrollToBottom()
     return
   }
@@ -135,7 +144,7 @@ const execute = async () => {
   if (raw === 'session') {
     addLine(
       'system',
-      `auth=${auth.isAuthenticated ? 'authorized' : 'guest'}; history=${history.value.length}; theme=${theme.value}`
+      `auth=${auth.isAuthenticated ? 'авторизован' : 'гость'}; admin=${auth.isAdmin}; history=${history.value.length}; theme=${theme.value}`
     )
     await scrollToBottom()
     return
@@ -144,32 +153,52 @@ const execute = async () => {
   if (raw.startsWith('theme ')) {
     const selected = raw.split(' ')[1] as TerminalTheme | undefined
     if (!selected || ['green', 'amber', 'blue'].indexOf(selected) === -1) {
-      addLine('error', "Usage: theme <green|amber|blue>")
+      addLine('error', 'Использование: theme <green|amber|blue>')
     } else {
       theme.value = selected
-      addLine('system', `Theme switched to ${selected}.`)
+      addLine('system', `Тема переключена на ${selected}.`)
     }
     await scrollToBottom()
     return
   }
 
-  if (raw.startsWith('login ')) {
-    const [_, username, password] = raw.split(' ')
-    if (!username || !password) {
-      addLine('error', 'Usage: login <username> <password>')
+  if (raw === 'login' || raw.startsWith('login ')) {
+    if (raw !== 'login') {
+      addLine('system', 'Пароль в терминал не вводится. Открываю форму входа...')
+    }
+    authModalMode.value = 'login'
+    showAuthModal.value = true
+    await scrollToBottom()
+    return
+  }
+
+  if (raw === 'register' || raw.startsWith('register ')) {
+    if (raw !== 'register') {
+      addLine('system', 'Регистрация только через форму (без пароля в истории команд).')
+    }
+    authModalMode.value = 'register'
+    showAuthModal.value = true
+    await scrollToBottom()
+    return
+  }
+
+  if (raw.startsWith('reset-request ')) {
+    const username = raw.split(' ')[1]
+    if (!username) {
+      addLine('error', 'Использование: reset-request <логин>')
       await scrollToBottom()
       return
     }
     try {
       busy.value = true
-      const response = (await api.login(username, password)) as {
-        access_token: string
-        refresh_token: string
+      const response = await api.requestPasswordReset(username)
+      addLine('output', response.message)
+      if (response.reset_token) {
+        addLine('system', `Токен сброса: ${response.reset_token}`)
+        addLine('system', `Срок действия: ${response.expires_in_minutes} мин.`)
       }
-      auth.setTokens(response.access_token, response.refresh_token)
-      addLine('output', 'Authentication successful.')
     } catch {
-      addLine('error', 'Authentication failed.')
+      addLine('error', 'Не удалось запросить сброс пароля.')
     } finally {
       busy.value = false
       await scrollToBottom()
@@ -177,20 +206,50 @@ const execute = async () => {
     return
   }
 
-  if (raw.startsWith('register ')) {
-    const [_, username, password] = raw.split(' ')
-    if (!username || !password) {
-      addLine('error', 'Usage: register <username> <password>')
+  if (raw.startsWith('reset-password ')) {
+    const parts = raw.split(' ')
+    const token = parts[1]
+    const newPassword = parts[2]
+    if (!token || !newPassword) {
+      addLine('error', 'Использование: reset-password <токен> <новый_пароль>')
       await scrollToBottom()
       return
     }
     try {
       busy.value = true
-      const response = await api.register(username, password)
-      auth.setTokens(response.access_token, response.refresh_token)
-      addLine('output', 'Registration successful. You are authenticated.')
+      await api.confirmPasswordReset(token, newPassword)
+      auth.logout()
+      addLine('output', 'Пароль успешно сброшен. Выполните login с новым паролем.')
     } catch {
-      addLine('error', 'Registration failed. Username may already exist.')
+      addLine('error', 'Сброс пароля не удался. Проверьте токен и срок действия.')
+    } finally {
+      busy.value = false
+      await scrollToBottom()
+    }
+    return
+  }
+
+  if (raw.startsWith('password ')) {
+    if (!auth.isAuthenticated) {
+      addLine('error', 'Требуется авторизация.')
+      await scrollToBottom()
+      return
+    }
+    const parts = raw.split(' ')
+    const currentPassword = parts[1]
+    const newPassword = parts[2]
+    if (!currentPassword || !newPassword) {
+      addLine('error', 'Использование: password <текущий_пароль> <новый_пароль>')
+      await scrollToBottom()
+      return
+    }
+    try {
+      busy.value = true
+      await api.changePassword(currentPassword, newPassword)
+      auth.logout()
+      addLine('output', 'Пароль изменён. Войдите снова через login.')
+    } catch {
+      addLine('error', 'Смена пароля не удалась. Проверьте текущий пароль.')
     } finally {
       busy.value = false
       await scrollToBottom()
@@ -205,15 +264,19 @@ const execute = async () => {
       lines.value = [
         {
           type: 'system',
-          value: 'Terminal cleared.',
-          timestamp: new Date().toLocaleTimeString()
+          value: 'Экран терминала очищен.',
+          timestamp: new Date().toLocaleTimeString('ru-RU')
         }
       ]
     } else {
-      addLine(response.requires_auth ? 'error' : 'output', response.output)
+      const lineType = response.requires_auth || response.forbidden ? 'error' : 'output'
+      addLine(lineType, response.output)
+      if (response.action === 'open_url' && response.url && typeof window !== 'undefined') {
+        window.open(response.url, '_blank', 'noopener,noreferrer')
+      }
     }
   } catch {
-    addLine('error', 'Backend unavailable or command failed.')
+    addLine('error', 'Backend недоступен или команда завершилась с ошибкой.')
   } finally {
     busy.value = false
     await scrollToBottom()
@@ -252,7 +315,7 @@ const getLineValue = (line: unknown): string =>
     ? String((line as { value: string }).value)
     : ''
 
-onMounted(() => {
+onMounted(async () => {
   if (typeof window === 'undefined') return
   const savedHistory = localStorage.getItem('terminal_history')
   const savedTheme = localStorage.getItem('terminal_theme') as TerminalTheme | null
@@ -267,6 +330,11 @@ onMounted(() => {
   }
   if (savedTheme && ['green', 'amber', 'blue'].indexOf(savedTheme) !== -1) {
     theme.value = savedTheme
+  }
+  if (auth.isAuthenticated) {
+    await api.restoreSession()
+  } else {
+    auth.markInitialized()
   }
 })
 
@@ -283,25 +351,54 @@ watch(theme, (nextTheme) => {
   if (typeof window === 'undefined') return
   localStorage.setItem('terminal_theme', nextTheme)
 })
+
+const onAuthSuccess = () => {
+  addLine('output', 'Сессия обновлена.')
+}
 </script>
 
 <template>
   <section class="mx-auto mt-6 flex h-[78vh] w-full max-w-6xl overflow-hidden rounded-xl border border-terminal-gray/90 bg-terminal-black/95 font-mono shadow-2xl shadow-black/40">
     <aside class="hidden w-56 border-r border-terminal-gray/80 bg-black/25 p-4 md:block">
-      <div class="mb-4 text-[11px] uppercase tracking-widest text-terminal-gray">Workspace</div>
+      <div class="mb-4 text-[11px] uppercase tracking-widest text-terminal-gray">Рабочая область</div>
       <ul class="space-y-2 text-xs" :class="themeStyles.muted">
         <li>root: ~/personal_me</li>
-        <li>mode: interactive</li>
-        <li>auth: {{ auth.isAuthenticated ? 'authorized' : 'guest' }}</li>
+        <li>режим: interactive</li>
+        <li>auth: {{ auth.isAuthenticated ? 'авторизован' : 'гость' }}</li>
+        <li v-if="auth.isAdmin">role: admin</li>
       </ul>
-      <div class="mt-6 text-[11px] uppercase tracking-widest text-terminal-gray">Hints</div>
+      <div v-if="auth.isAdmin" class="mt-4 space-y-1">
+        <NuxtLink
+          to="/admin/integrations"
+          class="block text-xs text-cyan-300 underline hover:text-cyan-200"
+        >
+          admin → интеграции
+        </NuxtLink>
+        <NuxtLink
+          to="/admin/projects"
+          class="block text-xs text-cyan-300 underline hover:text-cyan-200"
+        >
+          admin → проекты
+        </NuxtLink>
+      </div>
+      <div class="mt-4">
+        <NuxtLink
+          to="/projects"
+          class="text-xs text-terminal-gray underline hover:text-terminal-green"
+        >
+          /projects
+        </NuxtLink>
+      </div>
+      <div class="mt-6 text-[11px] uppercase tracking-widest text-terminal-gray">Подсказки</div>
       <ul class="mt-2 space-y-1 text-xs" :class="themeStyles.muted">
         <li>help</li>
-        <li>register username pass</li>
-        <li>login username pass</li>
+        <li>login / register</li>
+        <li>reset-request логин</li>
+        <li>password старый новый</li>
         <li>theme green|amber|blue</li>
-        <li>whoami / pwd / session</li>
-        <li>projects</li>
+        <li>go github / grafana</li>
+        <li>services</li>
+        <li>projects / project slug</li>
         <li>clear</li>
       </ul>
     </aside>
@@ -314,7 +411,7 @@ watch(theme, (nextTheme) => {
           <span class="h-3 w-3 rounded-full bg-green-500/90" />
           <span class="ml-3 text-xs" :class="themeStyles.muted">terminal://personal_me/session</span>
         </div>
-        <div class="text-xs text-terminal-gray">since {{ uptimeStart.toLocaleTimeString() }}</div>
+        <div class="text-xs text-terminal-gray">с {{ uptimeStart.toLocaleTimeString('ru-RU') }}</div>
       </header>
       <div class="flex items-center gap-2 border-b px-4 py-2 text-xs" :class="themeStyles.border">
         <button
@@ -322,21 +419,21 @@ watch(theme, (nextTheme) => {
           :class="activeTab === 'terminal' ? [themeStyles.output, 'bg-white/10'] : 'text-terminal-gray'"
           @click="activeTab = 'terminal'"
         >
-          terminal
+          терминал
         </button>
         <button
           class="rounded px-2 py-1"
           :class="activeTab === 'projects' ? [themeStyles.output, 'bg-white/10'] : 'text-terminal-gray'"
-          @click="activeTab = 'projects'"
+          @click="activeTab = 'projects'; loadPortfolio()"
         >
-          projects
+          проекты
         </button>
         <button
           class="rounded px-2 py-1"
           :class="activeTab === 'logs' ? [themeStyles.output, 'bg-white/10'] : 'text-terminal-gray'"
           @click="activeTab = 'logs'"
         >
-          logs
+          логи
         </button>
       </div>
 
@@ -352,16 +449,26 @@ watch(theme, (nextTheme) => {
         </div>
       </div>
       <div v-else-if="activeTab === 'projects'" class="min-h-0 flex-1 overflow-y-auto p-5 text-sm" :class="themeStyles.output">
-        <p class="mb-2">project://personal_me</p>
-        <p class="text-terminal-gray">- backend (FastAPI)</p>
-        <p class="text-terminal-gray">- frontend (Nuxt 3)</p>
-        <p class="text-terminal-gray">- infra (Docker/Nginx)</p>
+        <div class="mb-4 flex items-center justify-between">
+          <p>portfolio://projects</p>
+          <NuxtLink to="/projects" class="text-xs text-cyan-300 hover:underline">открыть веб</NuxtLink>
+        </div>
+        <p v-if="portfolioLoading" class="text-terminal-gray">Загрузка...</p>
+        <ul v-else class="space-y-3">
+          <li v-for="item in portfolioProjects" :key="item.id">
+            <NuxtLink :to="`/projects/${item.slug}`" class="text-cyan-300 hover:underline">
+              {{ item.title }}
+            </NuxtLink>
+            <span v-if="item.featured" class="ml-1 text-amber-300">★</span>
+            <p class="text-terminal-gray">{{ item.summary }}</p>
+          </li>
+        </ul>
       </div>
       <div v-else class="min-h-0 flex-1 overflow-y-auto p-5 text-sm" :class="themeStyles.output">
         <p class="mb-2">log://session</p>
-        <p class="text-terminal-gray">history entries: {{ history.length }}</p>
-        <p class="text-terminal-gray">theme: {{ theme }}</p>
-        <p class="text-terminal-gray">auth: {{ auth.isAuthenticated ? 'authorized' : 'guest' }}</p>
+        <p class="text-terminal-gray">записей в истории: {{ history.length }}</p>
+        <p class="text-terminal-gray">тема: {{ theme }}</p>
+        <p class="text-terminal-gray">auth: {{ auth.isAuthenticated ? 'авторизован' : 'гость' }}</p>
       </div>
 
       <form class="border-t px-5 py-4" :class="themeStyles.border" @submit.prevent="execute">
@@ -381,4 +488,10 @@ watch(theme, (nextTheme) => {
       </form>
     </div>
   </section>
+  <LoginModal
+    v-if="showAuthModal"
+    :mode="authModalMode"
+    @close="showAuthModal = false"
+    @success="onAuthSuccess"
+  />
 </template>

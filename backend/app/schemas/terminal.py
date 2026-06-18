@@ -15,3 +15,6 @@ class TerminalCommandResponse(BaseModel):
     command: str
     output: str
     requires_auth: bool = False
+    forbidden: bool = False
+    action: str | None = None
+    url: str | None = None
