@@ -61,3 +61,49 @@ def test_oidc_authorization_code_flow(client: TestClient):
     )
     assert userinfo.status_code == 200
     assert userinfo.json()["sub"] == "admin"
+
+
+def test_oidc_pkce_authorization_code_flow(client: TestClient):
+    import base64
+    import hashlib
+    import secrets
+
+    code_verifier = secrets.token_urlsafe(48)
+    digest = hashlib.sha256(code_verifier.encode()).digest()
+    code_challenge = base64.urlsafe_b64encode(digest).decode().rstrip("=")
+
+    login = client.post(
+        "/api/v1/auth/login",
+        json={"username": "admin", "password": "admin123"},
+    )
+    assert login.status_code == 200
+
+    approve = client.post(
+        "/api/v1/oidc/authorize/approve",
+        json={
+            "client_id": "personal-me-dev",
+            "redirect_uri": "http://localhost/oauth/callback",
+            "scope": "openid profile",
+            "state": "pkce-state",
+            "nonce": "pkce-nonce",
+            "code_challenge": code_challenge,
+            "code_challenge_method": "S256",
+        },
+    )
+    assert approve.status_code == 200
+    redirect_to = approve.json()["redirect_to"]
+    code = parse_qs(urlparse(redirect_to).query)["code"][0]
+
+    token = client.post(
+        "/api/v1/oidc/token",
+        data={
+            "grant_type": "authorization_code",
+            "code": code,
+            "redirect_uri": "http://localhost/oauth/callback",
+            "client_id": "personal-me-dev",
+            "client_secret": "dev-secret-change-me",
+            "code_verifier": code_verifier,
+        },
+    )
+    assert token.status_code == 200
+    assert token.json()["access_token"]

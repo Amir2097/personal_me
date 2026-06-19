@@ -11,6 +11,8 @@ from app.core import db
 from app.core.db import get_session
 from app.main import app
 from app.services.auth_service import ensure_initial_admin
+from app.services.contact_service import ensure_default_contacts
+from app.services.site_settings_service import ensure_default_site_settings
 from app.services.integration_service import ensure_default_integrations
 from app.services.oidc_service import ensure_default_oauth_client
 from app.services.project_service import ensure_default_projects
@@ -24,6 +26,8 @@ def _seed_test_database(engine) -> None:
         ensure_default_integrations(seed_session)
         ensure_default_projects(seed_session)
         ensure_default_oauth_client(seed_session)
+        ensure_default_contacts(seed_session)
+        ensure_default_site_settings(seed_session)
 
 
 @pytest.fixture(name="client")
@@ -36,6 +40,7 @@ def client_fixture(monkeypatch: pytest.MonkeyPatch) -> Generator[TestClient, Non
     )
     monkeypatch.setattr("app.core.config.settings.allow_registration", True)
     monkeypatch.setattr("app.core.config.settings.expose_reset_token", True)
+    monkeypatch.setattr("app.core.config.settings.auth_rate_limit_per_minute", 0)
     monkeypatch.setattr("app.core.config.settings.initial_admin_email", "admin@test.local")
     db.engine = test_engine
     _seed_test_database(test_engine)

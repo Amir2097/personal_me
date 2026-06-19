@@ -25,6 +25,7 @@ from app.schemas.auth import (
     TokenResponse,
     UserProfile,
 )
+from app.schemas.site import ProfileUpdateRequest
 from app.services.auth_service import (
     change_password,
     confirm_password_reset,
@@ -34,6 +35,7 @@ from app.services.auth_service import (
     refresh_user_tokens,
     register_user,
     request_password_reset,
+    update_user_profile,
 )
 from app.services.email_service import is_smtp_configured
 from app.services.sso_service import exchange_sso_code
@@ -99,8 +101,25 @@ def me(
     username: str = Depends(get_current_username),
 ) -> UserProfile:
     """Получить профиль текущего пользователя."""
-    profile_username, is_admin = get_user_profile(session, username)
-    return UserProfile(username=profile_username, is_admin=is_admin)
+    profile_username, is_admin, email = get_user_profile(session, username)
+    return UserProfile(username=profile_username, is_admin=is_admin, email=email)
+
+
+@router.patch(
+    "/profile",
+    response_model=UserProfile,
+    summary="Обновление профиля",
+)
+def patch_profile(
+    payload: ProfileUpdateRequest,
+    session: Session = Depends(get_session),
+    username: str = Depends(get_current_username),
+) -> UserProfile:
+    """Обновить профиль текущего пользователя."""
+    profile_username, is_admin, email = update_user_profile(
+        session, username, payload.email
+    )
+    return UserProfile(username=profile_username, is_admin=is_admin, email=email)
 
 
 @router.post(
@@ -117,7 +136,13 @@ def register(
 ) -> TokenResponse:
     """Зарегистрировать пользователя и выдать токены."""
     check_auth_rate_limit(request)
-    tokens = register_user(session, payload.username, payload.password, payload.email)
+    tokens = register_user(
+        session,
+        payload.username,
+        payload.password,
+        payload.email,
+        accept_terms=payload.accept_terms,
+    )
     set_auth_cookies(response, tokens)
     return tokens
 

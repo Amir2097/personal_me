@@ -16,6 +16,9 @@ from app.core.migrations import run_migrations
 from app.services.auth_service import ensure_initial_admin
 from app.services.integration_service import ensure_default_integrations
 from app.services.oidc_service import ensure_default_oauth_client
+from app.services.contact_service import ensure_default_contacts
+from app.services.site_settings_service import ensure_default_site_settings
+from app.services.project_service import ensure_default_projects
 
 
 def initialize_database(max_retries: int = 30, delay_seconds: float = 1.0) -> None:
@@ -28,6 +31,8 @@ def initialize_database(max_retries: int = 30, delay_seconds: float = 1.0) -> No
                 ensure_default_integrations(session)
                 ensure_default_projects(session)
                 ensure_default_oauth_client(session)
+                ensure_default_contacts(session)
+                ensure_default_site_settings(session)
             return
         except OperationalError:
             if attempt == max_retries - 1:

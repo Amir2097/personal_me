@@ -58,11 +58,21 @@ def test_projects_admin_crud(client: TestClient, admin_headers: dict[str, str]):
 
     patch = client.patch(
         f"/api/v1/projects/{project_id}",
-        json={"summary": "Updated summary"},
+        json={
+            "summary": "Updated summary",
+            "image_url": "https://example.com/cover.png",
+            "gallery_urls": "https://example.com/a.png\nhttps://example.com/b.png",
+        },
         headers=admin_headers,
     )
     assert patch.status_code == 200
-    assert patch.json()["summary"] == "Updated summary"
+    body = patch.json()
+    assert body["summary"] == "Updated summary"
+    assert body["image_url"] == "https://example.com/cover.png"
+    assert body["gallery"] == [
+        "https://example.com/a.png",
+        "https://example.com/b.png",
+    ]
 
     delete = client.delete(f"/api/v1/projects/{project_id}", headers=admin_headers)
     assert delete.status_code == 204

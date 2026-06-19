@@ -7,6 +7,8 @@ from sqlalchemy import engine_from_config, pool
 from sqlmodel import SQLModel
 
 from app.core.config import settings
+from app.models.contact_channel import ContactChannel  # noqa: F401
+from app.models.site_settings import SiteSettings  # noqa: F401
 from app.models.project import Project  # noqa: F401
 from app.models.integration import Integration  # noqa: F401
 from app.models.oauth_authorization_code import OAuthAuthorizationCode  # noqa: F401

@@ -2,7 +2,11 @@
 import { computed, nextTick, onMounted, ref, watch } from 'vue'
 import type { Project } from '~/composables/useApi'
 import { useApi } from '~/composables/useApi'
-import { useAuthStore } from '~/stores/auth'
+import { useTerminalAliases } from '~/composables/useTerminalAliases'
+import { useTerminalLogs } from '~/composables/useTerminalLogs'
+import { useLocale } from '~/composables/useLocale'
+import type { TerminalFxFlag, TerminalFxPreset } from '~/composables/useTerminalFx'
+import type { TerminalTheme } from '~/composables/useTerminalTheme'
 
 interface TerminalLine {
   type: 'input' | 'output' | 'error' | 'system'
@@ -10,18 +14,31 @@ interface TerminalLine {
   timestamp: string
 }
 
-type TerminalTheme = 'green' | 'amber' | 'blue'
+const EXTENDED_BOOT = [
+  'POST ok — personal_me hub',
+  'loading kernel modules... ok',
+  'mount /dev/portfolio... ok',
+  'starting integration daemon... ok',
+  'auth subsystem ready',
+  'network stack up',
+  'session ready — type help for commands'
+]
 
 const api = useApi()
 const auth = useAuthStore()
+const config = useRuntimeConfig()
+const { theme, themeLabel, themeStyles } = useTerminalTheme()
+const { label: fxLabel, setPreset, toggleFlag } = useTerminalFx()
+const { soundEnabled } = useTerminalPreferences()
+const { notify: faviconNotify } = useTerminalFavicon()
+const { show: showMatrix } = useTerminalMatrix()
+const { logs, pushLog } = useTerminalLogs()
+const { resolveAlias, setAlias, removeAlias, listAliases } = useTerminalAliases()
+const { locale, setLocale } = useLocale()
+const integrationKeys = ref<string[]>([])
+const contactKeys = ref<string[]>([])
 const command = ref('')
-const lines = ref<TerminalLine[]>([
-  {
-    type: 'system',
-    value: "Загрузка завершена. Введите 'help' для списка команд.",
-    timestamp: new Date().toLocaleTimeString('ru-RU')
-  }
-])
+const lines = ref<TerminalLine[]>([])
 const history = ref<string[]>([])
 const historyIndex = ref(-1)
 const busy = ref(false)
@@ -32,54 +49,31 @@ const prompt = computed(() =>
     ? `${auth.username || 'user'}@personal-me:~$`
     : 'guest@personal-me:~$'
 )
-const uptimeStart = new Date()
 const activeTab = ref<'terminal' | 'projects' | 'logs'>('terminal')
-const theme = ref<TerminalTheme>('green')
 const portfolioProjects = ref<Project[]>([])
+const featuredProjects = ref<Project[]>([])
 const portfolioLoading = ref(false)
 const showAuthModal = ref(false)
 const authModalMode = ref<'login' | 'register'>('login')
 
-const themeStyles = computed(() => {
-  if (theme.value === 'amber') {
-    return {
-      shell: 'text-amber-300',
-      muted: 'text-amber-200/70',
-      system: 'text-amber-100',
-      input: 'text-amber-300',
-      output: 'text-amber-200',
-      border: 'border-amber-500/30',
-      caret: 'terminal-caret-amber'
-    }
-  }
-  if (theme.value === 'blue') {
-    return {
-      shell: 'text-cyan-300',
-      muted: 'text-cyan-200/70',
-      system: 'text-cyan-100',
-      input: 'text-cyan-300',
-      output: 'text-cyan-200',
-      border: 'border-cyan-500/30',
-      caret: 'terminal-caret-blue'
-    }
-  }
-  return {
-    shell: 'text-terminal-green',
-    muted: 'text-terminal-green/75',
-    system: 'text-cyan-300',
-    input: 'text-terminal-green',
-    output: 'text-terminal-green/95',
-    border: 'border-terminal-gray/80',
-    caret: 'terminal-caret'
-  }
-})
+const nowStamp = () => new Date().toLocaleTimeString('ru-RU')
+
+const bootSequence = (): TerminalLine[] => [
+  { type: 'system', value: 'POST ok — personal_me hub', timestamp: nowStamp() },
+  { type: 'system', value: `welcome, ${config.public.ownerName} developer hub`, timestamp: nowStamp() },
+  { type: 'system', value: 'работодателям: projects · пользователям: services · help', timestamp: nowStamp() },
+  { type: 'system', value: "session ready — type 'help' for commands", timestamp: nowStamp() }
+]
 
 const addLine = (type: TerminalLine['type'], value: string) => {
   lines.value.push({
     type,
     value,
-    timestamp: new Date().toLocaleTimeString('ru-RU')
+    timestamp: nowStamp()
   })
+  if (type === 'error') {
+    faviconNotify('error')
+  }
 }
 
 const scrollToBottom = async () => {
@@ -92,22 +86,196 @@ const scrollToBottom = async () => {
 const loadPortfolio = async () => {
   portfolioLoading.value = true
   try {
-    portfolioProjects.value = await api.listProjects()
+    const [all, featured] = await Promise.all([
+      api.listProjects(false),
+      api.listFeaturedProjects()
+    ])
+    portfolioProjects.value = all
+    featuredProjects.value = featured
   } catch {
     portfolioProjects.value = []
+    featuredProjects.value = []
   } finally {
     portfolioLoading.value = false
   }
 }
 
+const BASE_COMMANDS = [
+  'help',
+  'man',
+  'about',
+  'contact',
+  'status',
+  'clear',
+  'projects',
+  'project',
+  'services',
+  'go',
+  'login',
+  'register',
+  'logout',
+  'profile',
+  'whoami',
+  'pwd',
+  'session',
+  'theme',
+  'fx',
+  'lang',
+  'alias'
+]
+
+const completeInput = (input: string): string | null => {
+  const trimmed = input.trimStart()
+  if (!trimmed) return null
+  const parts = trimmed.split(/\s+/)
+  const head = parts[0]?.toLowerCase() ?? ''
+  const tail = parts.slice(1).join(' ')
+  if (parts.length === 1) {
+    const matches = BASE_COMMANDS.filter((item) => item.startsWith(head))
+    if (matches.length === 1 && matches[0] !== head) {
+      return matches[0]
+    }
+    return null
+  }
+  if (head === 'go' && parts.length === 2) {
+    const partial = parts[1].toLowerCase()
+    const matches = integrationKeys.value.filter((key) => key.startsWith(partial))
+    if (matches.length === 1 && matches[0] !== partial) {
+      return `go ${matches[0]}`
+    }
+  }
+  if (head === 'contact' && parts.length === 2) {
+    const partial = parts[1].toLowerCase()
+    const matches = contactKeys.value.filter((key) => key.startsWith(partial))
+    if (matches.length === 1 && matches[0] !== partial) {
+      return `contact ${matches[0]}`
+    }
+  }
+  if (head === 'theme' && parts.length === 2) {
+    const themes = ['green', 'amber', 'blue']
+    const partial = parts[1].toLowerCase()
+    const matches = themes.filter((item) => item.startsWith(partial))
+    if (matches.length === 1) {
+      return `theme ${matches[0]}`
+    }
+  }
+  if (head === 'lang' && parts.length === 2) {
+    const langs = ['ru', 'en']
+    const partial = parts[1].toLowerCase()
+    const matches = langs.filter((item) => item.startsWith(partial))
+    if (matches.length === 1) {
+      return `lang ${matches[0]}`
+    }
+  }
+  if (head === 'project' && parts.length === 2) {
+    const partial = parts[1].toLowerCase()
+    const slugs = portfolioProjects.value.map((item) => item.slug)
+    const matches = slugs.filter((slug) => slug.startsWith(partial))
+    if (matches.length === 1) {
+      return `project ${matches[0]}`
+    }
+  }
+  if (tail) {
+    return null
+  }
+  return null
+}
+
+const terminalCommandErrorMessage = (error: unknown) => {
+  const status = (error as { statusCode?: number }).statusCode
+  if (status === 401 || status === 403) {
+    return 'Для этой команды нужно войти в систему. Используйте login.'
+  }
+  if (status === 429) {
+    return 'Слишком много попыток. Подождите минуту и повторите.'
+  }
+  return 'Такой команды нет или она сейчас недоступна. Введите help для списка.'
+}
+
+const maybeShowServicesHint = (command: string) => {
+  if (typeof window === 'undefined') return
+  if (!command.startsWith('services') && !command.startsWith('go')) return
+  if (localStorage.getItem('services_hint_shown')) return
+  localStorage.setItem('services_hint_shown', '1')
+  addLine(
+    'system',
+    'Подсказка: go <service> откроет интеграцию в новой вкладке. SSO подставится автоматически.'
+  )
+}
+
 const execute = async () => {
-  const raw = command.value.trim()
+  const raw = resolveAlias(command.value.trim())
   if (!raw || busy.value) return
 
   addLine('input', raw)
+  pushLog('cmd', raw)
   history.value.push(raw)
   historyIndex.value = history.value.length
   command.value = ''
+
+  maybeShowServicesHint(raw)
+
+  if (raw === 'matrix') {
+    showMatrix()
+    addLine('system', 'Wake up, Neo...')
+    await scrollToBottom()
+    return
+  }
+
+  if (raw === 'sudo' || raw.startsWith('sudo ')) {
+    addLine('error', 'Nice try. Недостаточно прав (и так задумано).')
+    await scrollToBottom()
+    return
+  }
+
+  if (raw === 'vim' || raw.startsWith('vim ')) {
+    addLine('output', 'Vim: :wq — выход. (или просто закройте вкладку)')
+    await scrollToBottom()
+    return
+  }
+
+  if (raw === 'profile') {
+    if (!auth.isAuthenticated) {
+      addLine('error', 'Требуется авторизация.')
+    } else {
+      addLine('output', `Профиль: ${auth.username}. Откройте /profile для email и пароля.`)
+    }
+    await scrollToBottom()
+    return
+  }
+
+  if (raw.startsWith('lang ')) {
+    const selected = raw.split(' ')[1] as 'ru' | 'en' | undefined
+    if (!selected || (selected !== 'ru' && selected !== 'en')) {
+      addLine('error', 'Использование: lang <ru|en>')
+    } else {
+      setLocale(selected)
+      addLine('system', `Язык: ${selected}`)
+    }
+    await scrollToBottom()
+    return
+  }
+
+  if (raw.startsWith('alias ')) {
+    const body = raw.slice('alias '.length).trim()
+    if (!body) {
+      const items = listAliases()
+      addLine('output', items.length ? items.join('\n') : 'Алиасы не заданы.')
+    } else if (body.startsWith('-d ')) {
+      removeAlias(body.slice(3).trim())
+      addLine('system', 'Алиас удалён.')
+    } else {
+      const eq = body.indexOf('=')
+      if (eq === -1) {
+        addLine('error', 'Использование: alias name=command  |  alias -d name')
+      } else {
+        setAlias(body.slice(0, eq).trim(), body.slice(eq + 1).trim())
+        addLine('system', 'Алиас сохранён.')
+      }
+    }
+    await scrollToBottom()
+    return
+  }
 
   if (raw === 'logout') {
     if (!auth.isAuthenticated) {
@@ -120,6 +288,7 @@ const execute = async () => {
       await api.logout()
       auth.logout()
       addLine('output', 'Выход выполнен успешно.')
+      pushLog('auth', 'logout')
     } catch {
       addLine('error', 'Не удалось выполнить logout.')
     } finally {
@@ -144,7 +313,7 @@ const execute = async () => {
   if (raw === 'session') {
     addLine(
       'system',
-      `auth=${auth.isAuthenticated ? 'авторизован' : 'гость'}; admin=${auth.isAdmin}; history=${history.value.length}; theme=${theme.value}`
+      `auth=${auth.isAuthenticated ? 'авторизован' : 'гость'}; admin=${auth.isAdmin}; history=${history.value.length}; theme=${themeLabel.value}; fx=${fxLabel.value}`
     )
     await scrollToBottom()
     return
@@ -152,12 +321,54 @@ const execute = async () => {
 
   if (raw.startsWith('theme ')) {
     const selected = raw.split(' ')[1] as TerminalTheme | undefined
-    if (!selected || ['green', 'amber', 'blue'].indexOf(selected) === -1) {
-      addLine('error', 'Использование: theme <green|amber|blue>')
+    if (!selected || !['green', 'amber', 'blue', 'auto'].includes(selected)) {
+      addLine('error', 'Использование: theme <auto|green|amber|blue>')
     } else {
       theme.value = selected
-      addLine('system', `Тема переключена на ${selected}.`)
+      await nextTick()
+      addLine('system', `Тема: ${themeLabel.value}.`)
     }
+    await scrollToBottom()
+    return
+  }
+
+  if (raw.startsWith('fx ')) {
+    const parts = raw.split(/\s+/)
+    const action = parts[1]
+    if (action === 'off') {
+      setPreset('off')
+      addLine('system', 'Эффекты отключены.')
+    } else if (action === 'preset' && parts[2]) {
+      const preset = parts[2] as TerminalFxPreset
+      if (!['minimal', 'retro', 'hacker', 'off'].includes(preset)) {
+        addLine('error', 'Использование: fx preset <minimal|retro|hacker|off>')
+      } else {
+        setPreset(preset)
+        addLine('system', `FX preset: ${preset} (${fxLabel.value}).`)
+      }
+    } else if (action === 'toggle' && parts[2]) {
+      const flag = parts[2] as TerminalFxFlag
+      if (!['scanlines', 'glow', 'vignette', 'grain'].includes(flag)) {
+        addLine('error', 'Использование: fx toggle <scanlines|glow|vignette|grain>')
+      } else {
+        toggleFlag(flag)
+        addLine('system', `FX: ${fxLabel.value}`)
+      }
+    } else {
+      addLine(
+        'error',
+        'Использование: fx off | fx preset <minimal|retro|hacker> | fx toggle <flag>'
+      )
+    }
+    await scrollToBottom()
+    return
+  }
+
+  if (raw === 'fx') {
+    addLine(
+      'system',
+      `fx: ${fxLabel.value} · preset: minimal|retro|hacker · toggle: scanlines|glow|vignette|grain`
+    )
     await scrollToBottom()
     return
   }
@@ -265,7 +476,7 @@ const execute = async () => {
         {
           type: 'system',
           value: 'Экран терминала очищен.',
-          timestamp: new Date().toLocaleTimeString('ru-RU')
+          timestamp: nowStamp()
         }
       ]
     } else {
@@ -273,10 +484,11 @@ const execute = async () => {
       addLine(lineType, response.output)
       if (response.action === 'open_url' && response.url && typeof window !== 'undefined') {
         window.open(response.url, '_blank', 'noopener,noreferrer')
+        pushLog('info', `open ${response.url}`)
       }
     }
-  } catch {
-    addLine('error', 'Backend недоступен или команда завершилась с ошибкой.')
+  } catch (error) {
+    addLine('error', terminalCommandErrorMessage(error))
   } finally {
     busy.value = false
     await scrollToBottom()
@@ -284,6 +496,23 @@ const execute = async () => {
 }
 
 const onKeydown = (event: KeyboardEvent) => {
+  if (
+    soundEnabled.value &&
+    event.key.length === 1 &&
+    !event.ctrlKey &&
+    !event.metaKey &&
+    !event.altKey
+  ) {
+    playTerminalKeySound()
+  }
+  if (event.key === 'Tab') {
+    event.preventDefault()
+    const completed = completeInput(command.value)
+    if (completed) {
+      command.value = completed
+    }
+    return
+  }
   if (event.key === 'ArrowUp') {
     event.preventDefault()
     if (history.value.length === 0) return
@@ -316,9 +545,19 @@ const getLineValue = (line: unknown): string =>
     : ''
 
 onMounted(async () => {
+  if (typeof window !== 'undefined' && !localStorage.getItem('terminal_boot_seen')) {
+    lines.value = []
+    for (const line of EXTENDED_BOOT) {
+      await new Promise((resolve) => setTimeout(resolve, 75))
+      addLine('system', line)
+    }
+    localStorage.setItem('terminal_boot_seen', '1')
+  } else {
+    lines.value = bootSequence()
+  }
+
   if (typeof window === 'undefined') return
   const savedHistory = localStorage.getItem('terminal_history')
-  const savedTheme = localStorage.getItem('terminal_theme') as TerminalTheme | null
 
   if (savedHistory) {
     try {
@@ -328,14 +567,24 @@ onMounted(async () => {
       history.value = []
     }
   }
-  if (savedTheme && ['green', 'amber', 'blue'].indexOf(savedTheme) !== -1) {
-    theme.value = savedTheme
-  }
   if (auth.isAuthenticated) {
     await api.restoreSession()
   } else {
     auth.markInitialized()
   }
+  try {
+    const integrations = await api.listIntegrations()
+    integrationKeys.value = integrations.map((item) => item.key)
+  } catch {
+    integrationKeys.value = []
+  }
+  try {
+    const contacts = await api.listContacts()
+    contactKeys.value = contacts.map((item) => item.key)
+  } catch {
+    contactKeys.value = []
+  }
+  await loadPortfolio()
 })
 
 watch(
@@ -347,73 +596,24 @@ watch(
   { deep: true }
 )
 
-watch(theme, (nextTheme) => {
-  if (typeof window === 'undefined') return
-  localStorage.setItem('terminal_theme', nextTheme)
-})
-
-const onAuthSuccess = () => {
+const onAuthSuccess = async () => {
   addLine('output', 'Сессия обновлена.')
+  pushLog('auth', `login ${auth.username}`)
+  try {
+    const about = await api.getAbout()
+    if (about.motd) {
+      addLine('system', about.motd)
+    }
+  } catch {
+    /* ignore */
+  }
 }
 </script>
 
 <template>
-  <section class="mx-auto mt-6 flex h-[78vh] w-full max-w-6xl overflow-hidden rounded-xl border border-terminal-gray/90 bg-terminal-black/95 font-mono shadow-2xl shadow-black/40">
-    <aside class="hidden w-56 border-r border-terminal-gray/80 bg-black/25 p-4 md:block">
-      <div class="mb-4 text-[11px] uppercase tracking-widest text-terminal-gray">Рабочая область</div>
-      <ul class="space-y-2 text-xs" :class="themeStyles.muted">
-        <li>root: ~/personal_me</li>
-        <li>режим: interactive</li>
-        <li>auth: {{ auth.isAuthenticated ? 'авторизован' : 'гость' }}</li>
-        <li v-if="auth.isAdmin">role: admin</li>
-      </ul>
-      <div v-if="auth.isAdmin" class="mt-4 space-y-1">
-        <NuxtLink
-          to="/admin/integrations"
-          class="block text-xs text-cyan-300 underline hover:text-cyan-200"
-        >
-          admin → интеграции
-        </NuxtLink>
-        <NuxtLink
-          to="/admin/projects"
-          class="block text-xs text-cyan-300 underline hover:text-cyan-200"
-        >
-          admin → проекты
-        </NuxtLink>
-      </div>
-      <div class="mt-4">
-        <NuxtLink
-          to="/projects"
-          class="text-xs text-terminal-gray underline hover:text-terminal-green"
-        >
-          /projects
-        </NuxtLink>
-      </div>
-      <div class="mt-6 text-[11px] uppercase tracking-widest text-terminal-gray">Подсказки</div>
-      <ul class="mt-2 space-y-1 text-xs" :class="themeStyles.muted">
-        <li>help</li>
-        <li>login / register</li>
-        <li>reset-request логин</li>
-        <li>password старый новый</li>
-        <li>theme green|amber|blue</li>
-        <li>go github / grafana</li>
-        <li>services</li>
-        <li>projects / project slug</li>
-        <li>clear</li>
-      </ul>
-    </aside>
-
-    <div class="flex min-w-0 flex-1 flex-col">
-      <header class="flex items-center justify-between border-b border-terminal-gray/80 px-4 py-3">
-        <div class="flex items-center gap-2">
-          <span class="h-3 w-3 rounded-full bg-red-500/90" />
-          <span class="h-3 w-3 rounded-full bg-yellow-500/90" />
-          <span class="h-3 w-3 rounded-full bg-green-500/90" />
-          <span class="ml-3 text-xs" :class="themeStyles.muted">terminal://personal_me/session</span>
-        </div>
-        <div class="text-xs text-terminal-gray">с {{ uptimeStart.toLocaleTimeString('ru-RU') }}</div>
-      </header>
-      <div class="flex items-center gap-2 border-b px-4 py-2 text-xs" :class="themeStyles.border">
+  <TerminalShell cwd="~" session="terminal://personal_me/session">
+    <template #toolbar>
+      <div class="flex items-center gap-2 text-xs">
         <button
           class="rounded px-2 py-1"
           :class="activeTab === 'terminal' ? [themeStyles.output, 'bg-white/10'] : 'text-terminal-gray'"
@@ -436,7 +636,9 @@ const onAuthSuccess = () => {
           логи
         </button>
       </div>
+    </template>
 
+    <div class="flex min-h-0 flex-1 flex-col">
       <div v-if="activeTab === 'terminal'" ref="terminalEl" class="terminal-scroll min-h-0 flex-1 overflow-y-auto p-5">
         <div v-for="(line, idx) in terminalLines" :key="idx" class="mb-2 grid grid-cols-[76px_1fr] gap-3 whitespace-pre-wrap text-sm">
           <span class="text-terminal-gray">{{ getLineTimestamp(line) }}</span>
@@ -454,21 +656,37 @@ const onAuthSuccess = () => {
           <NuxtLink to="/projects" class="text-xs text-cyan-300 hover:underline">открыть веб</NuxtLink>
         </div>
         <p v-if="portfolioLoading" class="text-terminal-gray">Загрузка...</p>
-        <ul v-else class="space-y-3">
-          <li v-for="item in portfolioProjects" :key="item.id">
-            <NuxtLink :to="`/projects/${item.slug}`" class="text-cyan-300 hover:underline">
-              {{ item.title }}
-            </NuxtLink>
-            <span v-if="item.featured" class="ml-1 text-amber-300">★</span>
-            <p class="text-terminal-gray">{{ item.summary }}</p>
-          </li>
-        </ul>
+        <template v-else>
+          <div v-if="featuredProjects.length" class="mb-6">
+            <p class="mb-2 text-amber-300">★ Featured</p>
+            <ul class="space-y-3">
+              <li v-for="item in featuredProjects" :key="`f-${item.id}`">
+                <NuxtLink :to="`/projects/${item.slug}`" class="text-cyan-300 hover:underline">
+                  {{ item.title }}
+                </NuxtLink>
+                <p class="text-terminal-gray">{{ item.summary }}</p>
+              </li>
+            </ul>
+          </div>
+          <ul class="space-y-3">
+            <li v-for="item in portfolioProjects" :key="item.id">
+              <NuxtLink :to="`/projects/${item.slug}`" class="text-cyan-300 hover:underline">
+                {{ item.title }}
+              </NuxtLink>
+              <span v-if="item.featured" class="ml-1 text-amber-300">★</span>
+              <p class="text-terminal-gray">{{ item.summary }}</p>
+            </li>
+          </ul>
+        </template>
       </div>
       <div v-else class="min-h-0 flex-1 overflow-y-auto p-5 text-sm" :class="themeStyles.output">
         <p class="mb-2">log://session</p>
-        <p class="text-terminal-gray">записей в истории: {{ history.length }}</p>
-        <p class="text-terminal-gray">тема: {{ theme }}</p>
-        <p class="text-terminal-gray">auth: {{ auth.isAuthenticated ? 'авторизован' : 'гость' }}</p>
+        <ul class="space-y-1">
+          <li v-for="(entry, idx) in logs" :key="idx" class="text-terminal-gray">
+            [{{ entry.ts }}] {{ entry.level }}: {{ entry.message }}
+          </li>
+        </ul>
+        <p v-if="!logs.length" class="text-terminal-gray">Событий пока нет.</p>
       </div>
 
       <form class="border-t px-5 py-4" :class="themeStyles.border" @submit.prevent="execute">
@@ -487,7 +705,15 @@ const onAuthSuccess = () => {
         </div>
       </form>
     </div>
-  </section>
+
+    <template #status>
+      <span>hist:{{ history.length }}</span>
+    </template>
+    <template #status-actions>
+      <span class="text-terminal-gray">Ctrl+L → clear</span>
+    </template>
+  </TerminalShell>
+
   <LoginModal
     v-if="showAuthModal"
     :mode="authModalMode"

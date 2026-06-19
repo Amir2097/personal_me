@@ -15,6 +15,7 @@ def _format_services_list(integrations: dict) -> str:
         access = "auth" if service.requires_auth else "public"
         lines.append(f"  - {key}: {service.label} ({access}) -> {service.url}")
     lines.append("Используйте: go <сервис>")
+    lines.append("Подсказка: go <service> откроет сервис в новой вкладке (SSO если включён).")
     return "\n".join(lines)
 
 

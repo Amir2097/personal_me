@@ -6,7 +6,7 @@ from sqlmodel import Session
 from app.api.deps import get_current_admin_user, get_optional_access_token
 from app.core.db import get_session
 from app.models.user import User
-from app.schemas.project import ProjectCreate, ProjectRead, ProjectUpdate
+from app.schemas.project import ProjectCreate, ProjectRead, ProjectUpdate, parse_gallery_urls
 from app.services.project_service import (
     create_project,
     delete_project,
@@ -29,6 +29,8 @@ def _to_read(item) -> ProjectRead:
         tech_stack=item.tech_stack,
         github_url=item.github_url,
         demo_url=item.demo_url,
+        image_url=item.image_url,
+        gallery=parse_gallery_urls(item.gallery_urls),
         is_public=item.is_public,
         featured=item.featured,
         sort_order=item.sort_order,

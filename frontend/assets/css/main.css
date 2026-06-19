@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Orbitron:wght@500;700;900&display=swap');
 
 @tailwind base;
 @tailwind components;
@@ -16,6 +16,218 @@ body {
   color: #00ff88;
   font-family: 'JetBrains Mono', monospace;
   background-image: radial-gradient(circle at top, rgba(0, 255, 136, 0.08), transparent 35%);
+}
+
+/* Block cursor on reading surface only */
+html[data-terminal-theme='green']:not([data-terminal-cursor='off']) body {
+  cursor:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='20' viewBox='0 0 12 20'%3E%3Crect x='1' y='1' width='10' height='18' fill='%2300ff88'/%3E%3C/svg%3E")
+      5 10,
+    auto;
+}
+
+html[data-terminal-theme='amber']:not([data-terminal-cursor='off']) body {
+  cursor:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='20' viewBox='0 0 12 20'%3E%3Crect x='1' y='1' width='10' height='18' fill='%23fbbf24'/%3E%3C/svg%3E")
+      5 10,
+    auto;
+}
+
+html[data-terminal-theme='blue']:not([data-terminal-cursor='off']) body {
+  cursor:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='20' viewBox='0 0 12 20'%3E%3Crect x='1' y='1' width='10' height='18' fill='%2322d3ee'/%3E%3C/svg%3E")
+      5 10,
+    auto;
+}
+
+/* Clickable elements — pointer for clear affordance */
+html[data-terminal-theme]:not([data-terminal-cursor='off']) a,
+html[data-terminal-theme]:not([data-terminal-cursor='off']) button,
+html[data-terminal-theme]:not([data-terminal-cursor='off']) [role='button'],
+html[data-terminal-theme]:not([data-terminal-cursor='off']) label[for],
+html[data-terminal-theme]:not([data-terminal-cursor='off']) summary,
+html[data-terminal-theme]:not([data-terminal-cursor='off']) .terminal-clickable {
+  cursor: pointer;
+}
+
+.terminal-interactive {
+  text-decoration: underline;
+  text-decoration-style: dotted;
+  text-underline-offset: 3px;
+  transition:
+    color 0.15s ease,
+    text-shadow 0.15s ease,
+    background-color 0.15s ease;
+}
+
+.terminal-interactive:hover {
+  text-decoration-style: solid;
+  text-shadow: 0 0 8px currentColor;
+}
+
+html[data-terminal-theme='green'] a:hover,
+html[data-terminal-theme='green'] button:hover:not(:disabled) {
+  color: #00ff88;
+}
+
+html[data-terminal-theme='amber'] a:hover,
+html[data-terminal-theme='amber'] button:hover:not(:disabled) {
+  color: #fbbf24;
+}
+
+html[data-terminal-theme='blue'] a:hover,
+html[data-terminal-theme='blue'] button:hover:not(:disabled) {
+  color: #22d3ee;
+}
+
+.terminal-btn {
+  border: 1px solid rgba(148, 163, 184, 0.45);
+  border-radius: 0.375rem;
+  padding: 0.5rem 1rem;
+  transition:
+    border-color 0.15s ease,
+    background-color 0.15s ease,
+    box-shadow 0.15s ease;
+}
+
+.terminal-btn:hover:not(:disabled) {
+  border-color: rgba(0, 255, 136, 0.55);
+  background-color: rgba(0, 255, 136, 0.08);
+  box-shadow: 0 0 12px rgba(0, 255, 136, 0.15);
+}
+
+html[data-terminal-theme='amber'] .terminal-btn:hover:not(:disabled) {
+  border-color: rgba(251, 191, 36, 0.55);
+  background-color: rgba(251, 191, 36, 0.08);
+  box-shadow: 0 0 12px rgba(251, 191, 36, 0.15);
+}
+
+html[data-terminal-theme='blue'] .terminal-btn:hover:not(:disabled) {
+  border-color: rgba(34, 211, 238, 0.55);
+  background-color: rgba(34, 211, 238, 0.08);
+  box-shadow: 0 0 12px rgba(34, 211, 238, 0.15);
+}
+
+html[data-terminal-cursor='off'] body,
+html[data-terminal-cursor='off'] a,
+html[data-terminal-cursor='off'] button,
+html[data-terminal-cursor='off'] [role='button'],
+html[data-terminal-cursor='off'] label,
+html[data-terminal-cursor='off'] summary {
+  cursor: auto !important;
+}
+
+html[data-terminal-theme='green'] input,
+html[data-terminal-theme='green'] textarea,
+html[data-terminal-theme='green'] [contenteditable='true'],
+html[data-terminal-theme='amber'] input,
+html[data-terminal-theme='amber'] textarea,
+html[data-terminal-theme='amber'] [contenteditable='true'],
+html[data-terminal-theme='blue'] input,
+html[data-terminal-theme='blue'] textarea,
+html[data-terminal-theme='blue'] [contenteditable='true'] {
+  cursor: text;
+}
+
+html[data-terminal-theme='green'] ::selection {
+  background: rgba(0, 255, 136, 0.35);
+  color: #ecfeff;
+}
+
+html[data-terminal-theme='amber'] ::selection {
+  background: rgba(251, 191, 36, 0.35);
+  color: #fffbeb;
+}
+
+html[data-terminal-theme='blue'] ::selection {
+  background: rgba(34, 211, 238, 0.35);
+  color: #ecfeff;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html[data-terminal-theme] body,
+  html[data-terminal-theme] a,
+  html[data-terminal-theme] button,
+  html[data-terminal-theme] [role='button'],
+  html[data-terminal-theme] label,
+  html[data-terminal-theme] summary {
+    cursor: auto;
+  }
+
+  .terminal-title-bar,
+  .terminal-nav-active {
+    animation: none !important;
+  }
+}
+
+/* FX layers (flags in data-terminal-fx, space-separated) */
+html[data-terminal-fx*='scanlines'] body::before {
+  pointer-events: none;
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  opacity: 0.045;
+  background: repeating-linear-gradient(
+    to bottom,
+    transparent 0,
+    transparent 2px,
+    rgba(0, 0, 0, 0.45) 2px,
+    rgba(0, 0, 0, 0.45) 4px
+  );
+}
+
+html[data-terminal-fx*='vignette'] body::after {
+  pointer-events: none;
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: 9998;
+  background: radial-gradient(circle at center, transparent 58%, rgba(0, 0, 0, 0.62) 100%);
+}
+
+html[data-terminal-fx*='grain'] #__nuxt::after {
+  pointer-events: none;
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: 9997;
+  opacity: 0.055;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+html[data-terminal-fx*='glow'] body {
+  text-shadow: 0 0 0.55px currentColor;
+}
+
+.terminal-title-bar {
+  animation: titleFlicker 5.5s steps(1, end) infinite;
+}
+
+@keyframes titleFlicker {
+  0%,
+  96%,
+  100% {
+    opacity: 1;
+  }
+  97%,
+  99% {
+    opacity: 0.88;
+  }
+}
+
+.terminal-nav-active {
+  animation: navPulse 2.8s ease-in-out infinite;
+}
+
+@keyframes navPulse {
+  0%,
+  100% {
+    text-shadow: none;
+  }
+  50% {
+    text-shadow: 0 0 10px currentColor;
+  }
 }
 
 .terminal-caret {
@@ -44,8 +256,22 @@ body {
 }
 
 .terminal-scroll::-webkit-scrollbar-thumb {
-  background: #2f3b45;
   border-radius: 9999px;
+}
+
+html[data-terminal-theme='green'] .terminal-scroll::-webkit-scrollbar-thumb {
+  background: #1f3d30;
+  box-shadow: 0 0 8px rgba(0, 255, 136, 0.35);
+}
+
+html[data-terminal-theme='amber'] .terminal-scroll::-webkit-scrollbar-thumb {
+  background: #4a3a14;
+  box-shadow: 0 0 8px rgba(251, 191, 36, 0.35);
+}
+
+html[data-terminal-theme='blue'] .terminal-scroll::-webkit-scrollbar-thumb {
+  background: #164e63;
+  box-shadow: 0 0 8px rgba(34, 211, 238, 0.35);
 }
 
 @keyframes terminalBlink {
@@ -56,5 +282,196 @@ body {
   50%,
   100% {
     opacity: 0.1;
+  }
+}
+
+/* Let page background show the watermark (body keeps base color) */
+main.bg-terminal-black {
+  background-color: transparent;
+}
+
+/* ── DAUTOVTECH background watermark ── */
+.brand-watermark {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+.brand-watermark__layer {
+  position: absolute;
+  left: 50%;
+  top: 46%;
+  width: max-content;
+  max-width: none;
+  font-family: 'Orbitron', 'JetBrains Mono', monospace;
+  font-weight: 900;
+  letter-spacing: 0.18em;
+  white-space: nowrap;
+  user-select: none;
+  transform: translate(-50%, -50%) rotate(-26deg);
+}
+
+.brand-watermark__layer--primary {
+  font-size: clamp(3.5rem, 16vw, 11rem);
+  color: rgba(0, 255, 136, 0.055);
+  text-shadow: 0 0 40px rgba(0, 255, 136, 0.08);
+}
+
+.brand-watermark__layer--ghost {
+  font-size: clamp(2.5rem, 10vw, 6.5rem);
+  color: rgba(34, 211, 238, 0.035);
+  transform: translate(-38%, -62%) rotate(-26deg);
+  letter-spacing: 0.28em;
+}
+
+html[data-terminal-theme='amber'] .brand-watermark__layer--primary {
+  color: rgba(251, 191, 36, 0.06);
+  text-shadow: 0 0 40px rgba(251, 191, 36, 0.08);
+}
+
+html[data-terminal-theme='amber'] .brand-watermark__layer--ghost {
+  color: rgba(251, 191, 36, 0.03);
+}
+
+html[data-terminal-theme='blue'] .brand-watermark__layer--primary {
+  color: rgba(34, 211, 238, 0.06);
+  text-shadow: 0 0 40px rgba(34, 211, 238, 0.08);
+}
+
+html[data-terminal-theme='blue'] .brand-watermark__layer--ghost {
+  color: rgba(34, 211, 238, 0.03);
+}
+
+@media (max-width: 640px) {
+  .brand-watermark__layer--primary {
+    font-size: clamp(2.75rem, 22vw, 4.5rem);
+    letter-spacing: 0.12em;
+  }
+
+  .brand-watermark__layer--ghost {
+    display: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .brand-watermark__layer {
+    transform: translate(-50%, -50%) rotate(-26deg);
+  }
+}
+
+/* ── DAUTOVTECH compact stamp ── */
+.brand-stamp-bar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 45;
+  display: flex;
+  justify-content: flex-end;
+  padding: 0.45rem 1rem 0;
+  pointer-events: none;
+}
+
+.brand-stamp-bar .brand-stamp {
+  pointer-events: auto;
+}
+
+.brand-stamp {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  text-decoration: none !important;
+  user-select: none;
+  transition:
+    border-color 0.2s ease,
+    box-shadow 0.2s ease,
+    color 0.2s ease;
+}
+
+.brand-stamp__mark {
+  font-size: 0.45rem;
+  line-height: 1;
+  color: rgba(0, 255, 136, 0.75);
+}
+
+.brand-stamp__text {
+  font-family: 'Orbitron', 'JetBrains Mono', monospace;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+.brand-stamp--pill {
+  padding: 0.22rem 0.55rem 0.2rem 0.45rem;
+  border: 1px solid rgba(0, 255, 136, 0.28);
+  border-radius: 9999px;
+  background: rgba(11, 15, 16, 0.82);
+  backdrop-filter: blur(6px);
+  box-shadow: 0 0 14px rgba(0, 255, 136, 0.08);
+}
+
+.brand-stamp--pill .brand-stamp__text {
+  font-size: 0.58rem;
+  font-weight: 700;
+  color: rgba(0, 255, 136, 0.88);
+}
+
+.brand-stamp--pill:hover {
+  border-color: rgba(0, 255, 136, 0.55);
+  box-shadow: 0 0 18px rgba(0, 255, 136, 0.16);
+}
+
+.brand-stamp--micro {
+  padding: 0.1rem 0.35rem;
+  border: 1px dashed rgba(148, 163, 184, 0.35);
+  border-radius: 0.2rem;
+  background: rgba(0, 0, 0, 0.25);
+}
+
+.brand-stamp--micro .brand-stamp__mark {
+  font-size: 0.4rem;
+  color: rgba(34, 211, 238, 0.8);
+}
+
+.brand-stamp--micro .brand-stamp__text {
+  font-size: 0.52rem;
+  font-weight: 600;
+  color: rgba(148, 163, 184, 0.92);
+}
+
+.brand-stamp--micro:hover .brand-stamp__text {
+  color: #00ff88;
+}
+
+html[data-terminal-theme='amber'] .brand-stamp__mark,
+html[data-terminal-theme='amber'] .brand-stamp--pill .brand-stamp__text {
+  color: rgba(251, 191, 36, 0.88);
+}
+
+html[data-terminal-theme='amber'] .brand-stamp--pill {
+  border-color: rgba(251, 191, 36, 0.28);
+  box-shadow: 0 0 14px rgba(251, 191, 36, 0.08);
+}
+
+html[data-terminal-theme='blue'] .brand-stamp__mark,
+html[data-terminal-theme='blue'] .brand-stamp--pill .brand-stamp__text {
+  color: rgba(34, 211, 238, 0.88);
+}
+
+html[data-terminal-theme='blue'] .brand-stamp--pill {
+  border-color: rgba(34, 211, 238, 0.28);
+  box-shadow: 0 0 14px rgba(34, 211, 238, 0.08);
+}
+
+@media (max-width: 640px) {
+  .brand-stamp-bar {
+    padding-top: 0.35rem;
+    padding-right: 0.65rem;
+  }
+
+  .brand-stamp--pill .brand-stamp__text {
+    font-size: 0.52rem;
+    letter-spacing: 0.12em;
   }
 }

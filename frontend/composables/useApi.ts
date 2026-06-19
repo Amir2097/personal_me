@@ -1,5 +1,14 @@
 import { useAuthStore } from '~/stores/auth'
 
+export type SiteLegalPublic = {
+  site_name: string
+  owner_name: string
+  site_url: string
+  privacy_policy: string
+  terms_of_use: string
+  updated_at: string
+}
+
 export type Integration = {
   id: number
   key: string
@@ -31,6 +40,8 @@ export type Project = {
   tech_stack: string
   github_url: string
   demo_url: string
+  image_url: string
+  gallery: string[]
   is_public: boolean
   featured: boolean
   sort_order: number
@@ -46,9 +57,18 @@ export type ProjectInput = {
   tech_stack?: string
   github_url?: string
   demo_url?: string
+  image_url?: string
+  gallery_urls?: string
   is_public?: boolean
   featured?: boolean
   sort_order?: number
+}
+
+export type FeedbackInput = {
+  name: string
+  email: string
+  message: string
+  company?: string
 }
 
 export const useApi = () => {
@@ -83,6 +103,108 @@ export const useApi = () => {
   type UserProfileResponse = {
     username: string
     is_admin: boolean
+    email?: string | null
+  }
+
+  type AboutResponse = {
+    owner_name: string
+    tagline: string
+    bio: string
+    experience: string
+    skills: string[]
+    github_url: string
+    telegram: string
+    resume_url: string
+    resume_available: boolean
+    resume_path: string
+    motd: string
+    web_path: string
+    contacts: Contact[]
+  }
+
+  type Contact = {
+    id: number
+    key: string
+    label: string
+    value: string
+    kind: 'link' | 'email' | 'text'
+    enabled: boolean
+    sort_order: number
+    href: string | null
+    created_at: string
+  }
+
+  type ContactInput = {
+    key: string
+    label?: string
+    value: string
+    kind?: 'link' | 'email' | 'text'
+    enabled?: boolean
+    sort_order?: number
+  }
+
+  type SiteStatusResponse = {
+    api: string
+    database: string
+    smtp: string
+    version: string
+  }
+
+  type SiteSeoPublic = {
+    site_name: string
+    owner_name: string
+    tagline: string
+    site_url: string
+    seo_title_suffix: string
+    seo_description: string
+    seo_keywords: string
+    og_image_url: string
+  }
+
+  type SiteSettings = SiteSeoPublic & {
+    bio: string
+    experience: string
+    skills: string
+    motd: string
+    resume_url: string
+    privacy_policy: string
+    terms_of_use: string
+    updated_at: string
+  }
+
+  type OAuthClient = {
+    id: number
+    client_id: string
+    name: string
+    redirect_uris: string[]
+    scopes: string
+    enabled: boolean
+  }
+
+  type OAuthClientInput = {
+    client_id: string
+    client_secret: string
+    name?: string
+    redirect_uris: string[]
+    scopes?: string
+  }
+
+  type AdminUserStats = {
+    total: number
+    active: number
+    banned: number
+    admins: number
+  }
+
+  type AdminUser = {
+    id: number
+    username: string
+    email: string | null
+    is_admin: boolean
+    is_active: boolean
+    created_at: string
+    last_login_at: string | null
+    last_session_at: string | null
   }
 
   type AuthConfigResponse = {
@@ -120,12 +242,13 @@ export const useApi = () => {
   const register = async (
     username: string,
     password: string,
-    email?: string
+    email?: string,
+    acceptTerms = false
   ): Promise<AuthTokensResponse> => {
     return await $fetch<AuthTokensResponse>('/api/v1/auth/register', {
       ...fetchDefaults,
       method: 'POST',
-      body: { username, password, email: email || undefined }
+      body: { username, password, email: email || undefined, accept_terms: acceptTerms }
     })
   }
 
@@ -207,9 +330,12 @@ export const useApi = () => {
     })
   }
 
-  const listProjects = async (): Promise<Project[]> => {
-    return await $fetch<Project[]>('/api/v1/projects', fetchDefaults)
+  const listProjects = async (featured = false): Promise<Project[]> => {
+    const query = featured ? '?featured=true' : ''
+    return await $fetch<Project[]>(`/api/v1/projects${query}`, fetchDefaults)
   }
+
+  const listFeaturedProjects = async (): Promise<Project[]> => listProjects(true)
 
   const listAllProjects = async (): Promise<Project[]> => {
     return await $fetch<Project[]>('/api/v1/projects/all', fetchDefaults)
@@ -242,6 +368,135 @@ export const useApi = () => {
     await $fetch(`/api/v1/projects/${id}`, {
       ...fetchDefaults,
       method: 'DELETE'
+    })
+  }
+
+  const getAbout = async (): Promise<AboutResponse> => {
+    return await $fetch<AboutResponse>('/api/v1/site/about', fetchDefaults)
+  }
+
+  const getSiteSeo = async (): Promise<SiteSeoPublic> => {
+    return await $fetch<SiteSeoPublic>('/api/v1/site/seo', fetchDefaults)
+  }
+
+  const getSiteLegal = async (): Promise<SiteLegalPublic> => {
+    return await $fetch<SiteLegalPublic>('/api/v1/site/legal', fetchDefaults)
+  }
+
+  const getSiteSettings = async (): Promise<SiteSettings> => {
+    return await $fetch<SiteSettings>('/api/v1/site/settings', fetchDefaults)
+  }
+
+  const updateSiteSettings = async (
+    payload: Partial<Omit<SiteSettings, 'updated_at'>>
+  ): Promise<SiteSettings> => {
+    return await $fetch<SiteSettings>('/api/v1/site/settings', {
+      ...fetchDefaults,
+      method: 'PATCH',
+      body: payload
+    })
+  }
+
+  const getSiteStatus = async (): Promise<SiteStatusResponse> => {
+    return await $fetch<SiteStatusResponse>('/api/v1/site/status', fetchDefaults)
+  }
+
+  const getFeedbackConfig = async (): Promise<{ enabled: boolean }> => {
+    return await $fetch<{ enabled: boolean }>('/api/v1/feedback/config', fetchDefaults)
+  }
+
+  const submitFeedback = async (payload: FeedbackInput): Promise<{ message: string }> => {
+    return await $fetch<{ message: string }>('/api/v1/feedback', {
+      ...fetchDefaults,
+      method: 'POST',
+      body: payload
+    })
+  }
+
+  const updateProfile = async (email: string | null): Promise<UserProfileResponse> => {
+    return await $fetch<UserProfileResponse>('/api/v1/auth/profile', {
+      ...fetchDefaults,
+      method: 'PATCH',
+      body: { email }
+    })
+  }
+
+  const listOAuthClients = async (): Promise<OAuthClient[]> => {
+    return await $fetch<OAuthClient[]>('/api/v1/oidc/clients', fetchDefaults)
+  }
+
+  const createOAuthClient = async (payload: OAuthClientInput): Promise<OAuthClient> => {
+    return await $fetch<OAuthClient>('/api/v1/oidc/clients', {
+      ...fetchDefaults,
+      method: 'POST',
+      body: payload
+    })
+  }
+
+  const deleteOAuthClient = async (id: number): Promise<void> => {
+    await $fetch(`/api/v1/oidc/clients/${id}`, {
+      ...fetchDefaults,
+      method: 'DELETE'
+    })
+  }
+
+  const listContacts = async (): Promise<Contact[]> => {
+    return await $fetch<Contact[]>('/api/v1/contacts', fetchDefaults)
+  }
+
+  const listAllContacts = async (): Promise<Contact[]> => {
+    return await $fetch<Contact[]>('/api/v1/contacts/all', fetchDefaults)
+  }
+
+  const createContact = async (payload: ContactInput): Promise<Contact> => {
+    return await $fetch<Contact>('/api/v1/contacts', {
+      ...fetchDefaults,
+      method: 'POST',
+      body: payload
+    })
+  }
+
+  const updateContact = async (
+    id: number,
+    payload: Partial<ContactInput>
+  ): Promise<Contact> => {
+    return await $fetch<Contact>(`/api/v1/contacts/${id}`, {
+      ...fetchDefaults,
+      method: 'PATCH',
+      body: payload
+    })
+  }
+
+  const deleteContact = async (id: number): Promise<void> => {
+    await $fetch(`/api/v1/contacts/${id}`, {
+      ...fetchDefaults,
+      method: 'DELETE'
+    })
+  }
+
+  const getUserStats = async (): Promise<AdminUserStats> => {
+    return await $fetch<AdminUserStats>('/api/v1/users/stats', fetchDefaults)
+  }
+
+  const listUsers = async (): Promise<AdminUser[]> => {
+    return await $fetch<AdminUser[]>('/api/v1/users', fetchDefaults)
+  }
+
+  const updateUser = async (
+    id: number,
+    payload: { is_active?: boolean; is_admin?: boolean }
+  ): Promise<AdminUser> => {
+    return await $fetch<AdminUser>(`/api/v1/users/${id}`, {
+      ...fetchDefaults,
+      method: 'PATCH',
+      body: payload
+    })
+  }
+
+  const revokeUserSessions = async (id: number): Promise<void> => {
+    await $fetch(`/api/v1/users/${id}/revoke-sessions`, {
+      ...fetchDefaults,
+      method: 'POST'
     })
   }
 
@@ -296,6 +551,28 @@ export const useApi = () => {
     getProject,
     createProject,
     updateProject,
-    deleteProject
+    deleteProject,
+    getAbout,
+    getSiteSeo,
+    getSiteLegal,
+    getSiteSettings,
+    updateSiteSettings,
+    getSiteStatus,
+    getFeedbackConfig,
+    submitFeedback,
+    updateProfile,
+    listFeaturedProjects,
+    listOAuthClients,
+    createOAuthClient,
+    deleteOAuthClient,
+    listContacts,
+    listAllContacts,
+    createContact,
+    updateContact,
+    deleteContact,
+    getUserStats,
+    listUsers,
+    updateUser,
+    revokeUserSessions
   }
 }

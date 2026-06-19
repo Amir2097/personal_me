@@ -37,5 +37,5 @@ def dispatch_command(ctx: CommandContext) -> TerminalCommandResponse:
             return result
     return TerminalCommandResponse(
         command=ctx.command,
-        output=f"Неизвестная команда: {ctx.normalized}. Введите help.",
+        output="Такой команды нет. Введите help для списка.",
     )

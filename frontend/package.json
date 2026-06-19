@@ -3,7 +3,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "nuxt dev --host",
+    "dev": "nuxt prepare && nuxt dev --host",
     "build": "nuxt build",
     "start": "nuxt start",
     "test": "nuxt prepare && vitest run",

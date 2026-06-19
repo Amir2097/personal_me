@@ -90,26 +90,15 @@ onMounted(load)
 </script>
 
 <template>
-  <main class="min-h-screen bg-terminal-black px-4 py-8 text-terminal-green">
-    <div class="mx-auto w-full max-w-5xl font-mono">
-      <div class="mb-6 flex items-center justify-between">
-        <div>
-          <p class="text-xs uppercase tracking-[0.25em] text-terminal-gray">admin</p>
-          <h1 class="text-xl">Интеграции</h1>
-        </div>
-        <div class="flex gap-4 text-sm">
-          <NuxtLink to="/admin/projects" class="text-terminal-gray hover:text-terminal-green">
-            проекты
-          </NuxtLink>
-          <NuxtLink to="/" class="text-terminal-gray hover:text-terminal-green">
-            ← терминал
-          </NuxtLink>
-        </div>
-      </div>
+  <main class="min-h-screen bg-terminal-black px-4 py-6 text-terminal-green">
+    <TerminalShell cwd="~/admin/integrations" session="terminal://personal_me/admin/integrations" tall>
+      <div class="min-h-0 flex-1 overflow-y-auto p-5 text-sm">
+        <p class="mb-1 text-xs uppercase tracking-[0.25em] text-terminal-gray">admin</p>
+        <h1 class="mb-6 text-xl">Интеграции</h1>
 
-      <p v-if="error" class="mb-4 text-sm text-red-400">{{ error }}</p>
+        <p v-if="error" class="mb-4 text-red-400">{{ error }}</p>
 
-      <section class="mb-8 rounded-lg border border-terminal-gray/80 bg-black/30 p-4">
+        <section class="mb-8 rounded-lg border border-terminal-gray/80 bg-black/30 p-4">
         <h2 class="mb-3 text-sm text-terminal-gray">Новая интеграция</h2>
         <div class="grid gap-3 md:grid-cols-2">
           <input
@@ -194,6 +183,7 @@ onMounted(load)
           </tbody>
         </table>
       </section>
-    </div>
+      </div>
+    </TerminalShell>
   </main>
 </template>

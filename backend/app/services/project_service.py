@@ -8,7 +8,7 @@ from fastapi import HTTPException, status
 from sqlmodel import Session, select
 
 from app.models.project import Project
-from app.schemas.project import ProjectCreate, ProjectUpdate
+from app.schemas.project import ProjectCreate, ProjectUpdate, parse_gallery_urls
 
 DEFAULT_PROJECTS: list[dict[str, Any]] = [
     {
@@ -97,7 +97,9 @@ def list_projects(
     featured_only: bool = False,
 ) -> list[Project]:
     """Список проектов с фильтрами."""
-    statement = select(Project).order_by(Project.sort_order, Project.title)
+    statement = select(Project).order_by(
+        Project.featured.desc(), Project.sort_order, Project.title
+    )
     if not include_private:
         statement = statement.where(Project.is_public == True)  # noqa: E712
     if featured_only:
@@ -157,6 +159,8 @@ def create_project(session: Session, payload: ProjectCreate) -> Project:
         tech_stack=payload.tech_stack.strip(),
         github_url=payload.github_url.strip(),
         demo_url=payload.demo_url.strip(),
+        image_url=payload.image_url.strip(),
+        gallery_urls=payload.gallery_urls.strip(),
         is_public=payload.is_public,
         featured=payload.featured,
         sort_order=payload.sort_order,
@@ -173,7 +177,16 @@ def update_project(session: Session, project_id: int, payload: ProjectUpdate) ->
     """Обновить проект."""
     item = get_project_by_id(session, project_id)
     data = payload.model_dump(exclude_unset=True)
-    for field in ("title", "summary", "description", "tech_stack", "github_url", "demo_url"):
+    for field in (
+        "title",
+        "summary",
+        "description",
+        "tech_stack",
+        "github_url",
+        "demo_url",
+        "image_url",
+        "gallery_urls",
+    ):
         if field in data and data[field] is not None:
             data[field] = str(data[field]).strip()
     for field, value in data.items():
@@ -196,15 +209,32 @@ def format_projects_list(projects: list[Project]) -> str:
     """Текстовый список для terminal-команды."""
     if not projects:
         return "Проекты не найдены. Откройте /projects"
+    featured = [item for item in projects if item.featured]
+    regular = [item for item in projects if not item.featured]
     lines = ["Проекты:"]
-    for item in projects:
-        visibility = "public" if item.is_public else "private"
-        featured = " ★" if item.featured else ""
-        lines.append(f"  - {item.slug}{featured}: {item.title} ({visibility})")
-        if item.summary:
-            lines.append(f"    {item.summary}")
+    if featured:
+        lines.append("")
+        lines.append("★ Featured:")
+        for item in featured:
+            lines.extend(_project_line(item))
+    if regular:
+        if featured:
+            lines.append("")
+            lines.append("Остальные:")
+        for item in regular:
+            lines.extend(_project_line(item))
+    lines.append("")
     lines.append("Подробнее: project <slug>  |  Веб: /projects")
     return "\n".join(lines)
+
+
+def _project_line(item: Project) -> list[str]:
+    visibility = "public" if item.is_public else "private"
+    featured = " ★" if item.featured else ""
+    lines = [f"  - {item.slug}{featured}: {item.title} ({visibility})"]
+    if item.summary:
+        lines.append(f"    {item.summary}")
+    return lines
 
 
 def format_project_detail(project: Project) -> str:

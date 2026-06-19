@@ -21,7 +21,7 @@ def user_headers(client: TestClient) -> dict[str, str]:
     """JWT заголовок обычного пользователя."""
     register = client.post(
         "/api/v1/auth/register",
-        json={"username": "regular", "password": "regular123"},
+        json={"username": "regular", "password": "regular123", "accept_terms": True},
     )
     assert register.status_code == 201
     token = register.json()["access_token"]

@@ -1,0 +1,9 @@
+{
+  "name": "personal_me",
+  "short_name": "personal_me",
+  "description": "Developer terminal hub",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0b0f10",
+  "theme_color": "#00ff88"
+}

@@ -16,7 +16,7 @@ def test_integrations_requires_admin(client: TestClient):
     """Обычный пользователь не может выполнить integrations."""
     register = client.post(
         "/api/v1/auth/register",
-        json={"username": "rbac_user", "password": "rbacuser1"},
+        json={"username": "rbac_user", "password": "rbacuser1", "accept_terms": True},
     )
     assert register.status_code == 201
     token = register.json()["access_token"]

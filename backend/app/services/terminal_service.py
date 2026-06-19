@@ -4,7 +4,7 @@ from sqlmodel import Session, select
 
 from app.models.user import User
 from app.schemas.terminal import TerminalCommandResponse
-from app.services.commands import admin_commands, builtin, integrations, projects  # noqa: F401
+from app.services.commands import admin_commands, builtin, contact_commands, integrations, projects, site_commands  # noqa: F401
 from app.services.commands.context import CommandContext
 from app.services.commands.registry import dispatch_command
 from app.services.integration_service import load_integrations

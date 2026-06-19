@@ -23,6 +23,8 @@ services:
       context: ./backend
     container_name: personal-me-backend
     restart: unless-stopped
+    env_file:
+      - .env
     environment:
       POSTGRES_DSN: postgresql+psycopg://app:app@db:5432/personal_me
       JWT_SECRET_KEY: super-secret-change-me
@@ -48,6 +50,12 @@ services:
         condition: service_healthy
       mailpit:
         condition: service_started
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/')\""]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
     ports:
       - "8000:8000"
 
@@ -56,11 +64,22 @@ services:
       context: ./frontend
     container_name: personal-me-frontend
     restart: unless-stopped
+    env_file:
+      - .env
+    volumes:
+      - ./frontend:/app
+      - frontend_node_modules:/app/node_modules
+      - frontend_nuxt:/app/.nuxt
+    dns:
+      - 8.8.8.8
+      - 1.1.1.1
     environment:
       NUXT_PUBLIC_API_BASE_URL: ""
       NUXT_API_INTERNAL_URL: http://backend:8000
+      NUXT_VITE_HMR_CLIENT_PORT: "80"
     depends_on:
-      - backend
+      backend:
+        condition: service_healthy
     ports:
       - "3000:3000"
 
@@ -86,3 +105,5 @@ services:
 
 volumes:
   postgres_data:
+  frontend_node_modules:
+  frontend_nuxt:

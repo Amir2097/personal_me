@@ -60,6 +60,11 @@ def ensure_initial_admin(session: Session) -> None:
 def issue_token_pair(session: Session, username: str) -> TokenResponse:
     """Create access/refresh tokens and persist refresh token metadata."""
     user = session.exec(select(User).where(User.username == username)).first()
+    if not user or not user.is_active:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Аккаунт заблокирован.",
+        )
     access_token = create_access_token(username)
     refresh_token, jti, expires_at = create_refresh_token(username)
     session.add(
@@ -87,13 +92,31 @@ def login_user(session: Session, username: str, password: str) -> TokenResponse:
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Неверный логин или пароль.",
         )
+    if not user.is_active:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Аккаунт заблокирован.",
+        )
+    user.last_login_at = datetime.now(timezone.utc)
+    session.add(user)
+    session.commit()
     return issue_token_pair(session, username=user.username)
 
 
 def register_user(
-    session: Session, username: str, password: str, email: str | None = None
+    session: Session,
+    username: str,
+    password: str,
+    email: str | None = None,
+    *,
+    accept_terms: bool = False,
 ) -> TokenResponse:
     """Create a new user and return token pair."""
+    if not accept_terms:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Необходимо согласие с политикой конфиденциальности и пользовательским соглашением.",
+        )
     if not settings.allow_registration:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
@@ -177,7 +200,7 @@ def logout_user(session: Session, refresh_token: str) -> None:
         session.commit()
 
 
-def _revoke_user_refresh_tokens(session: Session, username: str) -> None:
+def revoke_user_refresh_tokens(session: Session, username: str) -> None:
     """Отозвать все refresh-токены пользователя."""
     tokens = session.exec(
         select(RefreshToken).where(
@@ -277,7 +300,7 @@ def confirm_password_reset(session: Session, token: str, new_password: str) -> N
     session.add(user)
     session.add(stored)
     session.commit()
-    _revoke_user_refresh_tokens(session, user.username)
+    revoke_user_refresh_tokens(session, user.username)
 
 
 def change_password(
@@ -294,15 +317,41 @@ def change_password(
     user.hashed_password = get_password_hash(new_password)
     session.add(user)
     session.commit()
-    _revoke_user_refresh_tokens(session, user.username)
+    revoke_user_refresh_tokens(session, user.username)
 
 
-def get_user_profile(session: Session, username: str) -> tuple[str, bool]:
-    """Вернуть username и флаг is_admin."""
+def get_user_profile(session: Session, username: str) -> tuple[str, bool, str | None]:
+    """Вернуть username, is_admin и email."""
     user = session.exec(select(User).where(User.username == username)).first()
     if not user:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Пользователь не найден.",
         )
-    return user.username, user.is_admin
+    return user.username, user.is_admin, user.email
+
+
+def update_user_profile(
+    session: Session, username: str, email: str | None
+) -> tuple[str, bool, str | None]:
+    """Обновить email пользователя."""
+    user = session.exec(select(User).where(User.username == username)).first()
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Пользователь не найден.",
+        )
+    if email:
+        taken = session.exec(
+            select(User).where(User.email == email, User.username != username)
+        ).first()
+        if taken:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="Email уже используется.",
+            )
+    user.email = email or None
+    session.add(user)
+    session.commit()
+    session.refresh(user)
+    return user.username, user.is_admin, user.email

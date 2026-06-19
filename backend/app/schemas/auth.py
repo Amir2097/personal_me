@@ -16,6 +16,10 @@ class RegisterRequest(BaseModel):
     username: str = Field(..., min_length=3, max_length=64)
     password: str = Field(..., min_length=8, max_length=128)
     email: EmailStr | None = None
+    accept_terms: bool = Field(
+        ...,
+        description="Согласие с политикой конфиденциальности и пользовательским соглашением",
+    )
 
 
 class TokenResponse(BaseModel):
@@ -33,6 +37,7 @@ class UserProfile(BaseModel):
 
     username: str
     is_admin: bool
+    email: str | None = None
 
 
 class RefreshTokenRequest(BaseModel):

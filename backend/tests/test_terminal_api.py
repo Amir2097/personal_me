@@ -52,7 +52,7 @@ def test_register_and_login_flow(client):
     """Verify user registration and subsequent login."""
     register_response = client.post(
         "/api/v1/auth/register",
-        json={"username": "newuser", "password": "newuser123"},
+        json={"username": "newuser", "password": "newuser123", "accept_terms": True},
     )
     assert register_response.status_code == 201
     created_tokens = register_response.json()
@@ -61,7 +61,7 @@ def test_register_and_login_flow(client):
 
     duplicate_register = client.post(
         "/api/v1/auth/register",
-        json={"username": "newuser", "password": "newuser123"},
+        json={"username": "newuser", "password": "newuser123", "accept_terms": True},
     )
     assert duplicate_register.status_code == 409
 

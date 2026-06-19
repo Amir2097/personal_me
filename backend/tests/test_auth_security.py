@@ -20,7 +20,7 @@ def test_registration_disabled(client: TestClient, monkeypatch: pytest.MonkeyPat
     monkeypatch.setattr(settings, "allow_registration", False)
     response = client.post(
         "/api/v1/auth/register",
-        json={"username": "blocked_user", "password": "blocked123"},
+        json={"username": "blocked_user", "password": "blocked123", "accept_terms": True},
     )
     assert response.status_code == 403
 

@@ -81,9 +81,14 @@ def get_current_admin_user(
     username: str = Depends(get_current_username),
     session: Session = Depends(get_session),
 ) -> User:
-    """Проверить, что текущий пользователь — администратор."""
+    """Проверить, что текущий пользователь — активный администратор."""
     user = session.exec(select(User).where(User.username == username)).first()
-    if not user or not user.is_admin:
+    if not user or not user.is_active:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Аккаунт заблокирован.",
+        )
+    if not user.is_admin:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Доступ только для администратора.",

@@ -37,6 +37,23 @@ class Settings(BaseSettings):
     smtp_password: str = ""
     smtp_from: str = "noreply@localhost"
     smtp_use_tls: bool = True
+    feedback_to_email: str = ""
+    feedback_rate_limit_per_minute: int = 5
+    site_owner_name: str = ""
+    site_tagline: str = (
+        "Интерактивный командный центр: портфолио, интеграции и сервисы в одном терминале."
+    )
+    site_bio: str = (
+        "Backend-разработчик. Строю developer hub с терминальным UI, "
+        "JWT-auth, OIDC и интеграциями сервисов."
+    )
+    site_skills: str = "Python, FastAPI, PostgreSQL, Nuxt, Docker, OIDC"
+    site_experience: str = ""
+    site_github_url: str = ""
+    site_telegram: str = ""
+    site_resume_url: str = ""
+    site_motd: str = "Добро пожаловать. Введите help или откройте projects."
+    site_url: str = "http://localhost"
 
     model_config = SettingsConfigDict(
         env_file=".env",

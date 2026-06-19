@@ -22,6 +22,7 @@ const busy = ref(false)
 const error = ref('')
 const allowRegistration = ref(false)
 const showForgotPassword = ref(false)
+const acceptTerms = ref(false)
 
 const loadConfig = async () => {
   try {
@@ -40,13 +41,17 @@ const submit = async () => {
     error.value = 'Заполните логин и пароль.'
     return
   }
+  if (mode.value === 'register' && !acceptTerms.value) {
+    error.value = 'Нужно согласие с политикой конфиденциальности и пользовательским соглашением.'
+    return
+  }
   busy.value = true
   error.value = ''
   try {
     const response =
       mode.value === 'login'
         ? await api.login(username.value, password.value)
-        : await api.register(username.value, password.value, email.value || undefined)
+        : await api.register(username.value, password.value, email.value || undefined, acceptTerms.value)
     auth.setSession(response.username || username.value, response.is_admin ?? false)
     emit('success')
     emit('close')
@@ -97,10 +102,26 @@ const submit = async () => {
           class="w-full rounded border border-terminal-gray/60 bg-transparent px-3 py-2 text-sm outline-none"
         />
         <p v-if="error" class="text-sm text-red-400">{{ error }}</p>
+        <label
+          v-if="mode === 'register'"
+          class="flex items-start gap-2 text-xs leading-relaxed text-terminal-gray"
+        >
+          <input v-model="acceptTerms" type="checkbox" class="mt-0.5" />
+          <span>
+            Согласен с
+            <NuxtLink to="/legal/privacy" class="terminal-interactive text-cyan-300 underline" @click.stop>
+              политикой конфиденциальности
+            </NuxtLink>
+            и
+            <NuxtLink to="/legal/terms" class="terminal-interactive text-cyan-300 underline" @click.stop>
+              пользовательским соглашением
+            </NuxtLink>
+          </span>
+        </label>
         <button
           type="submit"
           class="w-full rounded border border-terminal-green/50 py-2 text-sm hover:bg-terminal-green/10"
-          :disabled="busy"
+          :disabled="busy || (mode === 'register' && !acceptTerms)"
         >
           {{ mode === 'login' ? 'Войти' : 'Зарегистрироваться' }}
         </button>

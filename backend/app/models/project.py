@@ -16,6 +16,8 @@ class Project(SQLModel, table=True):
     tech_stack: str = Field(default="", nullable=False)
     github_url: str = Field(default="", nullable=False)
     demo_url: str = Field(default="", nullable=False)
+    image_url: str = Field(default="", nullable=False)
+    gallery_urls: str = Field(default="", nullable=False)
     is_public: bool = Field(default=True, nullable=False)
     featured: bool = Field(default=False, nullable=False)
     sort_order: int = Field(default=0, nullable=False)
