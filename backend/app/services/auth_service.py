@@ -8,6 +8,7 @@ from jose import JWTError
 from sqlmodel import Session, select
 
 from app.core.config import settings
+from app.core.roles import sync_admin_flag
 from app.core.security import (
     create_access_token,
     create_refresh_token,
@@ -19,7 +20,8 @@ from app.core.security import (
 from app.models.password_reset_token import PasswordResetToken
 from app.models.refresh_token import RefreshToken
 from app.models.user import User
-from app.schemas.auth import PasswordResetTokenResponse, TokenResponse
+from app.schemas.auth import PasswordResetTokenResponse, TokenResponse, UserProfile, UserProfileUpdate
+from app.services.avatar_service import clear_managed_avatar_if_replaced, user_to_profile
 from app.services.email_service import is_smtp_configured, send_password_reset_email
 
 
@@ -41,6 +43,10 @@ def ensure_initial_admin(session: Session) -> None:
     if existing:
         if not existing.is_admin:
             existing.is_admin = True
+            existing.role = "admin"
+            session.add(existing)
+        elif existing.role != "admin":
+            existing.role = "admin"
             session.add(existing)
         if settings.initial_admin_email and not existing.email:
             existing.email = settings.initial_admin_email
@@ -51,6 +57,7 @@ def ensure_initial_admin(session: Session) -> None:
         username=settings.initial_admin_username,
         hashed_password=get_password_hash(settings.initial_admin_password),
         is_admin=True,
+        role="admin",
         email=settings.initial_admin_email or None,
     )
     session.add(user)
@@ -81,6 +88,7 @@ def issue_token_pair(session: Session, username: str) -> TokenResponse:
         refresh_token=refresh_token,
         username=username,
         is_admin=bool(user and user.is_admin),
+        role=user.role if user else "user",
     )
 
 
@@ -139,6 +147,7 @@ def register_user(
         username=username,
         hashed_password=get_password_hash(password),
         email=email,
+        role="user",
     )
     session.add(new_user)
     session.commit()
@@ -320,38 +329,61 @@ def change_password(
     revoke_user_refresh_tokens(session, user.username)
 
 
-def get_user_profile(session: Session, username: str) -> tuple[str, bool, str | None]:
-    """Вернуть username, is_admin и email."""
+def get_user_profile(session: Session, username: str) -> UserProfile:
+    """Вернуть профиль пользователя."""
     user = session.exec(select(User).where(User.username == username)).first()
     if not user:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Пользователь не найден.",
         )
-    return user.username, user.is_admin, user.email
+    return user_to_profile(user)
 
 
 def update_user_profile(
-    session: Session, username: str, email: str | None
-) -> tuple[str, bool, str | None]:
-    """Обновить email пользователя."""
+    session: Session, username: str, payload: UserProfileUpdate
+) -> UserProfile:
+    """Обновить профиль пользователя."""
     user = session.exec(select(User).where(User.username == username)).first()
     if not user:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Пользователь не найден.",
         )
-    if email:
-        taken = session.exec(
-            select(User).where(User.email == email, User.username != username)
-        ).first()
-        if taken:
-            raise HTTPException(
-                status_code=status.HTTP_409_CONFLICT,
-                detail="Email уже используется.",
-            )
-    user.email = email or None
+
+    data = payload.model_dump(exclude_unset=True)
+    if "email" in data:
+        email = data["email"]
+        if email:
+            taken = session.exec(
+                select(User).where(User.email == email, User.username != username)
+            ).first()
+            if taken:
+                raise HTTPException(
+                    status_code=status.HTTP_409_CONFLICT,
+                    detail="Email уже используется.",
+                )
+            user.email = email
+        else:
+            user.email = None
+
+    for field in (
+        "display_name",
+        "avatar_url",
+        "bio",
+        "location",
+        "website",
+        "telegram",
+        "github",
+    ):
+        if field in data:
+            value = data[field]
+            if field == "avatar_url":
+                new_url = value or ""
+                clear_managed_avatar_if_replaced(user, new_url)
+            setattr(user, field, value or "")
+
     session.add(user)
     session.commit()
     session.refresh(user)
-    return user.username, user.is_admin, user.email
+    return user_to_profile(user)

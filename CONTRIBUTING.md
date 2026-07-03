@@ -1,6 +1,6 @@
 # Contributing Guide
 
-Thanks for contributing to `personal_me`.
+Thanks for contributing to **DAUTOVTECH** (`personal_me` repo).
 
 ## Branch Naming (Git Flow)
 

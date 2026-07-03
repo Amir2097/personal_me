@@ -26,7 +26,7 @@ onMounted(async () => {
   <main class="min-h-screen bg-terminal-black px-4 py-6 text-terminal-green md:py-8">
     <div class="mx-auto flex w-full max-w-6xl flex-col gap-5 md:gap-6">
       <HubIntro compact />
-      <TerminalShell cwd="~/contact" session="terminal://personal_me/contact" tall>
+      <TerminalShell cwd="~/contact" session="terminal://dautovtech/contact" tall>
         <div class="min-h-0 flex-1 overflow-y-auto p-5 text-sm">
           <p class="text-xs uppercase tracking-[0.25em] text-terminal-gray">contact</p>
           <h1 class="mt-2 text-2xl">Связаться</h1>

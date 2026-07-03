@@ -6,7 +6,7 @@ def test_login_terminal_projects_and_logout_flow(client):
     guest_projects = client.post("/api/v1/terminal/execute", json={"command": "projects"})
     assert guest_projects.status_code == 200
     assert guest_projects.json()["requires_auth"] is False
-    assert "personal-me" in guest_projects.json()["output"]
+    assert "dautovtech" in guest_projects.json()["output"]
 
     login_response = client.post(
         "/api/v1/auth/login",
@@ -146,7 +146,11 @@ def test_password_reset_and_change_flow(client):
 
     change = client.post(
         "/api/v1/auth/change-password",
-        json={"current_password": "admin45678", "new_password": "admin12345"},
+        json={
+            "current_password": "admin45678",
+            "new_password": "admin12345",
+            "new_password_confirm": "admin12345",
+        },
         headers={"Authorization": f"Bearer {tokens['access_token']}"},
     )
     assert change.status_code == 204

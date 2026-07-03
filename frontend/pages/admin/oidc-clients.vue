@@ -70,7 +70,7 @@ onMounted(load)
   <main class="min-h-screen bg-terminal-black px-4 py-6 text-terminal-green md:py-8">
     <div class="mx-auto flex w-full max-w-6xl flex-col gap-5 md:gap-6">
       <HubIntro compact />
-      <TerminalShell cwd="~/admin/oidc-clients" session="terminal://personal_me/admin/oidc" tall>
+      <TerminalShell cwd="~/admin/oidc-clients" session="terminal://dautovtech/admin/oidc" tall>
         <div class="min-h-0 flex-1 overflow-y-auto p-5 text-sm">
           <p class="mb-1 text-xs uppercase tracking-[0.25em] text-terminal-gray">admin</p>
           <h1 class="mb-6 text-xl">OIDC clients</h1>

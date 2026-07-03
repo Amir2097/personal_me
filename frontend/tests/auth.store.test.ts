@@ -22,6 +22,38 @@ describe('auth store', () => {
     expect(auth.isAdmin).toBe(true)
   })
 
+  it('setProfile stores display fields', () => {
+    const auth = useAuthStore()
+    auth.setProfile({
+      username: 'nik',
+      is_admin: false,
+      display_name: 'Nik',
+      avatar_url: 'https://example.com/a.png',
+      email: 'nik@example.com'
+    })
+    expect(auth.displayLabel).toBe('Nik')
+    expect(auth.avatarUrl).toBe('https://example.com/a.png')
+    expect(auth.email).toBe('nik@example.com')
+  })
+
+  it('displayLabel falls back to username', () => {
+    const auth = useAuthStore()
+    auth.setSession('guest_user', false)
+    expect(auth.displayLabel).toBe('guest_user')
+  })
+
+  it('setProfile stores role', () => {
+    const auth = useAuthStore()
+    auth.setProfile({
+      username: 'nik',
+      is_admin: false,
+      role: 'kent',
+      display_name: 'Nik'
+    })
+    expect(auth.role).toBe('kent')
+    expect(auth.roleLabel).toBe('Кент')
+  })
+
   it('logout clears session', () => {
     const auth = useAuthStore()
     auth.setSession('user', false)

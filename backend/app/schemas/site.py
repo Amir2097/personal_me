@@ -101,6 +101,6 @@ class SiteStatusResponse(BaseModel):
 
 
 class ProfileUpdateRequest(BaseModel):
-    """Обновление профиля пользователя."""
+    """Обновление профиля пользователя (legacy alias)."""
 
     email: str | None = None

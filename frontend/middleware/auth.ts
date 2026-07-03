@@ -6,7 +6,7 @@ export default defineNuxtRouteMiddleware(async () => {
   const auth = useAuthStore()
   try {
     const profile = await api.me()
-    auth.setSession(profile.username, profile.is_admin)
+    auth.setProfile(profile)
   } catch {
     return navigateTo('/')
   }

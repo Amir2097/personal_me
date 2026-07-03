@@ -16,6 +16,7 @@ class AdminUserRead(BaseModel):
     id: int
     username: str
     email: str | None
+    role: str
     is_admin: bool
     is_active: bool
     created_at: datetime
@@ -26,6 +27,7 @@ class AdminUserRead(BaseModel):
 class AdminUserUpdate(BaseModel):
     is_active: bool | None = None
     is_admin: bool | None = None
+    role: str | None = None
 
 
 class AdminUserActionResponse(BaseModel):

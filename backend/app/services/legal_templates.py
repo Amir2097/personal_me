@@ -5,8 +5,8 @@ from datetime import date
 
 def _site_label(site_name: str, owner_name: str) -> str:
     if owner_name.strip():
-        return f'{owner_name.strip()} ({site_name.strip() or "personal_me"})'
-    return site_name.strip() or "personal_me"
+        return f'{owner_name.strip()} ({site_name.strip() or "DAUTOVTECH"})'
+    return site_name.strip() or "DAUTOVTECH"
 
 
 def default_privacy_policy(*, site_name: str, owner_name: str, site_url: str) -> str:

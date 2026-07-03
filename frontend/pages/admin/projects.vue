@@ -123,7 +123,7 @@ onMounted(load)
 
 <template>
   <main class="min-h-screen bg-terminal-black px-4 py-6 text-terminal-green">
-    <TerminalShell cwd="~/admin/projects" session="terminal://personal_me/admin/projects" tall>
+    <TerminalShell cwd="~/admin/projects" session="terminal://dautovtech/admin/projects" tall>
       <div class="min-h-0 flex-1 overflow-y-auto p-5 text-sm">
         <p class="mb-1 text-xs uppercase tracking-[0.25em] text-terminal-gray">admin</p>
         <h1 class="mb-6 text-xl">Проекты портфолио</h1>

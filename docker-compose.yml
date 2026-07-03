@@ -45,6 +45,7 @@ services:
       SMTP_FROM: noreply@localhost
       SMTP_USE_TLS: "false"
       EXPOSE_RESET_TOKEN: "false"
+      UPLOADS_DIR: /app/uploads
     depends_on:
       db:
         condition: service_healthy
@@ -58,6 +59,8 @@ services:
       start_period: 30s
     ports:
       - "8000:8000"
+    volumes:
+      - uploads_data:/app/uploads
 
   frontend:
     build:
@@ -105,5 +108,6 @@ services:
 
 volumes:
   postgres_data:
+  uploads_data:
   frontend_node_modules:
   frontend_nuxt:

@@ -7,7 +7,7 @@ from app.services.commands.registry import register_handler
 
 def _help_lines(ctx: CommandContext) -> list[str]:
     lines = [
-        "=== personal_me terminal help ===",
+        "=== DAUTOVTECH terminal help ===",
         "",
         "[general]",
         "  help, man <cmd>, about, status, clear",
@@ -24,7 +24,7 @@ def _help_lines(ctx: CommandContext) -> list[str]:
         "  profile                      веб: /profile",
         "  reset-request, reset-password, password",
         "",
-        "[personal]",
+        "[hub]",
         "  contact                      связаться (веб: /contact)",
         "  theme auto|green|amber|blue",
         "  fx preset retro|hacker|minimal",

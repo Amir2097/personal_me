@@ -8,7 +8,7 @@ const busy = ref(true)
 
 useSiteSeo({
   title: 'About',
-  description: 'О разработчике и developer hub personal_me',
+  description: 'О разработчике и developer hub DAUTOVTECH',
   path: '/about'
 })
 
@@ -34,7 +34,7 @@ onMounted(async () => {
   <main class="min-h-screen bg-terminal-black px-4 py-6 text-terminal-green md:py-8">
     <div class="mx-auto flex w-full max-w-6xl flex-col gap-5 md:gap-6">
       <HubIntro compact />
-      <TerminalShell cwd="~/about" session="terminal://personal_me/about" tall>
+      <TerminalShell cwd="~/about" session="terminal://DAUTOVTECH/about" tall>
         <div class="min-h-0 flex-1 overflow-y-auto p-5 text-sm">
           <p v-if="busy" class="text-terminal-gray">Загрузка...</p>
           <template v-else-if="about">

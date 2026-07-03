@@ -20,7 +20,7 @@ const body = computed(() => {
 
 useSiteSeo({
   title: title.value,
-  description: `${title.value} — personal_me`,
+  description: `${title.value} — DAUTOVTECH`,
   path: `/legal/${props.doc}`
 })
 
@@ -37,7 +37,7 @@ onMounted(async () => {
   <main class="min-h-screen bg-terminal-black px-4 py-6 text-terminal-green md:py-8">
     <div class="mx-auto flex w-full max-w-6xl flex-col gap-5 md:gap-6">
       <HubIntro compact />
-      <TerminalShell :cwd="`~/legal/${doc}`" :session="`terminal://personal_me/legal/${doc}`" tall>
+      <TerminalShell :cwd="`~/legal/${doc}`" :session="`terminal://dautovtech/legal/${doc}`" tall>
         <div class="min-h-0 flex-1 overflow-y-auto p-5 text-sm">
           <p v-if="busy" class="text-terminal-gray">Загрузка...</p>
           <template v-else-if="legal">

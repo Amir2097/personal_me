@@ -9,7 +9,7 @@ class SiteSettings(SQLModel, table=True):
     """Единственная строка настроек сайта и SEO (id=1)."""
 
     id: int = Field(default=1, primary_key=True)
-    site_name: str = Field(default="personal_me", nullable=False)
+    site_name: str = Field(default="DAUTOVTECH", nullable=False)
     owner_name: str = Field(default="", nullable=False)
     tagline: str = Field(default="", nullable=False)
     bio: str = Field(default="", nullable=False)

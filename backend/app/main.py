@@ -4,8 +4,11 @@ import time
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 
+from pathlib import Path
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 from sqlalchemy.exc import OperationalError
 from sqlmodel import Session
 
@@ -72,3 +75,11 @@ def healthcheck() -> dict[str, str]:
 
 
 app.include_router(api_router, prefix=settings.api_v1_prefix)
+
+uploads_root = Path(settings.uploads_dir)
+uploads_root.mkdir(parents=True, exist_ok=True)
+app.mount(
+    f"{settings.api_v1_prefix}/uploads",
+    StaticFiles(directory=str(uploads_root)),
+    name="uploads",
+)

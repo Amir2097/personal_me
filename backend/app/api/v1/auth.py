@@ -1,7 +1,7 @@
 """Authentication endpoints."""
 
-from fastapi import APIRouter, Depends, Request, Response
-from sqlmodel import Session
+from fastapi import APIRouter, Depends, File, Request, Response, UploadFile
+from sqlmodel import Session, select
 
 from app.api.deps import (
     get_current_username,
@@ -11,6 +11,7 @@ from app.core.config import settings
 from app.core.cookies import clear_auth_cookies, set_auth_cookies
 from app.core.db import get_session
 from app.core.rate_limit import check_auth_rate_limit
+from app.models.user import User
 from app.schemas.auth import (
     AuthConfigResponse,
     ChangePasswordRequest,
@@ -24,8 +25,8 @@ from app.schemas.auth import (
     SsoExchangeResponse,
     TokenResponse,
     UserProfile,
+    UserProfileUpdate,
 )
-from app.schemas.site import ProfileUpdateRequest
 from app.services.auth_service import (
     change_password,
     confirm_password_reset,
@@ -37,6 +38,7 @@ from app.services.auth_service import (
     request_password_reset,
     update_user_profile,
 )
+from app.services.avatar_service import remove_user_avatar, save_avatar_upload
 from app.services.email_service import is_smtp_configured
 from app.services.sso_service import exchange_sso_code
 
@@ -101,8 +103,7 @@ def me(
     username: str = Depends(get_current_username),
 ) -> UserProfile:
     """Получить профиль текущего пользователя."""
-    profile_username, is_admin, email = get_user_profile(session, username)
-    return UserProfile(username=profile_username, is_admin=is_admin, email=email)
+    return get_user_profile(session, username)
 
 
 @router.patch(
@@ -111,15 +112,53 @@ def me(
     summary="Обновление профиля",
 )
 def patch_profile(
-    payload: ProfileUpdateRequest,
+    payload: UserProfileUpdate,
     session: Session = Depends(get_session),
     username: str = Depends(get_current_username),
 ) -> UserProfile:
     """Обновить профиль текущего пользователя."""
-    profile_username, is_admin, email = update_user_profile(
-        session, username, payload.email
-    )
-    return UserProfile(username=profile_username, is_admin=is_admin, email=email)
+    return update_user_profile(session, username, payload)
+
+
+def _get_user_or_404(session: Session, username: str) -> User:
+    user = session.exec(select(User).where(User.username == username)).first()
+    if not user:
+        from fastapi import HTTPException, status
+
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Пользователь не найден.",
+        )
+    return user
+
+
+@router.post(
+    "/avatar",
+    response_model=UserProfile,
+    summary="Загрузка аватара",
+)
+async def upload_avatar(
+    session: Session = Depends(get_session),
+    username: str = Depends(get_current_username),
+    file: UploadFile = File(...),
+) -> UserProfile:
+    """Загрузить изображение аватара."""
+    user = _get_user_or_404(session, username)
+    return await save_avatar_upload(session, user, file)
+
+
+@router.delete(
+    "/avatar",
+    response_model=UserProfile,
+    summary="Удаление аватара",
+)
+def delete_avatar(
+    session: Session = Depends(get_session),
+    username: str = Depends(get_current_username),
+) -> UserProfile:
+    """Удалить аватар и вернуться к инициалам."""
+    user = _get_user_or_404(session, username)
+    return remove_user_avatar(session, user)
 
 
 @router.post(

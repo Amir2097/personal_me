@@ -25,7 +25,7 @@ export default defineNuxtConfig({
     apiInternalUrl: process.env.NUXT_API_INTERNAL_URL || 'http://localhost:8000',
     public: {
       apiBaseUrl: process.env.NUXT_PUBLIC_API_BASE_URL ?? '',
-      siteName: process.env.NUXT_PUBLIC_SITE_NAME || 'personal_me',
+      siteName: process.env.NUXT_PUBLIC_SITE_NAME || 'DAUTOVTECH',
       brandName: process.env.NUXT_PUBLIC_BRAND_NAME || 'DAUTOVTECH',
       ownerName: process.env.NUXT_PUBLIC_OWNER_NAME || '',
       tagline:

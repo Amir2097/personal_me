@@ -68,4 +68,7 @@ class UserInfoResponse(BaseModel):
 
     sub: str
     preferred_username: str
+    name: str | None = None
+    email: str | None = None
+    picture: str | None = None
     is_admin: bool = False

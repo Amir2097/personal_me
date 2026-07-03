@@ -57,20 +57,8 @@ const submit = async () => {
       </p>
 
       <form v-else class="space-y-3" @submit.prevent="submit">
-        <input
-          v-model="password"
-          type="password"
-          autocomplete="new-password"
-          placeholder="новый пароль"
-          class="w-full rounded border border-terminal-gray/60 bg-transparent px-3 py-2 text-sm outline-none"
-        />
-        <input
-          v-model="confirm"
-          type="password"
-          autocomplete="new-password"
-          placeholder="повторите пароль"
-          class="w-full rounded border border-terminal-gray/60 bg-transparent px-3 py-2 text-sm outline-none"
-        />
+        <PasswordInput v-model="password" autocomplete="new-password" placeholder="новый пароль" />
+        <PasswordInput v-model="confirm" autocomplete="new-password" placeholder="повторите пароль" />
         <p v-if="error" class="text-sm text-red-400">{{ error }}</p>
         <button
           type="submit"

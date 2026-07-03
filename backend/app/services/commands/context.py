@@ -4,6 +4,7 @@ from dataclasses import dataclass, field
 
 from sqlmodel import Session
 
+from app.core.roles import TerminalRole
 from app.services.integrations_config import ExternalService
 
 
@@ -16,6 +17,7 @@ class CommandContext:
     parts: list[str]
     is_authenticated: bool
     username: str | None = None
+    role: TerminalRole = "guest"
     is_admin: bool = False
     session: Session | None = None
     integrations: dict[str, ExternalService] = field(default_factory=dict)

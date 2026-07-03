@@ -12,3 +12,6 @@ frontend/.output/
 .vscode/
 *.log
 
+uploads/
+backend/uploads/
+

@@ -7,7 +7,7 @@ export function useSiteSeo(options?: {
   const { seo } = useSiteSeoConfig()
 
   const siteName = computed(
-    () => seo.value?.site_name || String(runtimeConfig.public.siteName || 'personal_me')
+    () => seo.value?.site_name || String(runtimeConfig.public.siteName || 'DAUTOVTECH')
   )
   const siteUrl = computed(
     () => seo.value?.site_url || String(runtimeConfig.public.siteUrl || 'http://localhost')

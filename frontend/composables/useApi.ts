@@ -1,5 +1,51 @@
 import { useAuthStore } from '~/stores/auth'
 
+export type UserProfileResponse = {
+  username: string
+  is_admin: boolean
+  role?: string
+  email?: string | null
+  display_name?: string
+  avatar_url?: string
+  bio?: string
+  location?: string
+  website?: string
+  telegram?: string
+  github?: string
+  created_at?: string | null
+  last_login_at?: string | null
+}
+
+export type UserProfileUpdate = {
+  email?: string | null
+  display_name?: string
+  avatar_url?: string
+  bio?: string
+  location?: string
+  website?: string
+  telegram?: string
+  github?: string
+}
+
+export type AdminUserStats = {
+  total: number
+  active: number
+  banned: number
+  admins: number
+}
+
+export type AdminUser = {
+  id: number
+  username: string
+  email: string | null
+  role: string
+  is_admin: boolean
+  is_active: boolean
+  created_at: string
+  last_login_at: string | null
+  last_session_at: string | null
+}
+
 export type SiteLegalPublic = {
   site_name: string
   owner_name: string
@@ -98,12 +144,7 @@ export const useApi = () => {
     token_type: string
     username?: string
     is_admin?: boolean
-  }
-
-  type UserProfileResponse = {
-    username: string
-    is_admin: boolean
-    email?: string | null
+    role?: string
   }
 
   type AboutResponse = {
@@ -189,24 +230,6 @@ export const useApi = () => {
     scopes?: string
   }
 
-  type AdminUserStats = {
-    total: number
-    active: number
-    banned: number
-    admins: number
-  }
-
-  type AdminUser = {
-    id: number
-    username: string
-    email: string | null
-    is_admin: boolean
-    is_active: boolean
-    created_at: string
-    last_login_at: string | null
-    last_session_at: string | null
-  }
-
   type AuthConfigResponse = {
     allow_registration: boolean
     expose_reset_token: boolean
@@ -288,11 +311,19 @@ export const useApi = () => {
     })
   }
 
-  const changePassword = async (currentPassword: string, newPassword: string) => {
+  const changePassword = async (
+    currentPassword: string,
+    newPassword: string,
+    newPasswordConfirm: string
+  ) => {
     return await $fetch('/api/v1/auth/change-password', {
       ...fetchDefaults,
       method: 'POST',
-      body: { current_password: currentPassword, new_password: newPassword }
+      body: {
+        current_password: currentPassword,
+        new_password: newPassword,
+        new_password_confirm: newPasswordConfirm
+      }
     })
   }
 
@@ -413,11 +444,28 @@ export const useApi = () => {
     })
   }
 
-  const updateProfile = async (email: string | null): Promise<UserProfileResponse> => {
+  const updateProfile = async (payload: UserProfileUpdate): Promise<UserProfileResponse> => {
     return await $fetch<UserProfileResponse>('/api/v1/auth/profile', {
       ...fetchDefaults,
       method: 'PATCH',
-      body: { email }
+      body: payload
+    })
+  }
+
+  const uploadAvatar = async (file: File): Promise<UserProfileResponse> => {
+    const body = new FormData()
+    body.append('file', file)
+    return await $fetch<UserProfileResponse>('/api/v1/auth/avatar', {
+      ...fetchDefaults,
+      method: 'POST',
+      body
+    })
+  }
+
+  const deleteAvatar = async (): Promise<UserProfileResponse> => {
+    return await $fetch<UserProfileResponse>('/api/v1/auth/avatar', {
+      ...fetchDefaults,
+      method: 'DELETE'
     })
   }
 
@@ -484,7 +532,7 @@ export const useApi = () => {
 
   const updateUser = async (
     id: number,
-    payload: { is_active?: boolean; is_admin?: boolean }
+    payload: { is_active?: boolean; is_admin?: boolean; role?: string }
   ): Promise<AdminUser> => {
     return await $fetch<AdminUser>(`/api/v1/users/${id}`, {
       ...fetchDefaults,
@@ -503,7 +551,7 @@ export const useApi = () => {
   const restoreSession = async (): Promise<boolean> => {
     try {
       const profile = await me()
-      auth.setSession(profile.username, profile.is_admin)
+      auth.setProfile(profile)
       return true
     } catch {
       auth.logout()
@@ -561,6 +609,8 @@ export const useApi = () => {
     getFeedbackConfig,
     submitFeedback,
     updateProfile,
+    uploadAvatar,
+    deleteAvatar,
     listFeaturedProjects,
     listOAuthClients,
     createOAuthClient,

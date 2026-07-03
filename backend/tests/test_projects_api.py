@@ -19,7 +19,7 @@ def test_list_public_projects(client: TestClient):
     response = client.get("/api/v1/projects")
     assert response.status_code == 200
     slugs = {item["slug"] for item in response.json()}
-    assert "personal-me" in slugs
+    assert "dautovtech" in slugs
     assert "infra-playground" not in slugs
 
 
@@ -31,9 +31,9 @@ def test_private_project_visible_when_authenticated(client: TestClient, admin_he
 
 
 def test_get_project_by_slug(client: TestClient):
-    response = client.get("/api/v1/projects/personal-me")
+    response = client.get("/api/v1/projects/dautovtech")
     assert response.status_code == 200
-    assert response.json()["title"] == "Personal Me"
+    assert response.json()["title"] == "DAUTOVTECH"
 
 
 def test_private_slug_hidden_from_guest(client: TestClient):
@@ -82,12 +82,12 @@ def test_terminal_projects_commands(client: TestClient):
     """Terminal-команды projects и project."""
     projects = client.post("/api/v1/terminal/execute", json={"command": "projects"})
     assert projects.status_code == 200
-    assert "personal-me" in projects.json()["output"]
+    assert "dautovtech" in projects.json()["output"]
     assert "infra-playground" not in projects.json()["output"]
 
     detail = client.post(
         "/api/v1/terminal/execute",
-        json={"command": "project personal-me"},
+        json={"command": "project dautovtech"},
     )
     assert detail.status_code == 200
-    assert "Personal Me" in detail.json()["output"]
+    assert "DAUTOVTECH" in detail.json()["output"]

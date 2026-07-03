@@ -1,5 +1,5 @@
 [project]
-name = "personal-me-backend"
+name = "dautovtech-backend"
 version = "0.1.0"
 description = "FastAPI backend for terminal-style developer hub"
 requires-python = ">=3.11"

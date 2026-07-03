@@ -31,6 +31,7 @@ def test_users_stats_and_list(client: TestClient):
     assert len(items) >= 1
     admin = next(item for item in items if item["username"] == "admin")
     assert admin["is_admin"] is True
+    assert admin["role"] == "admin"
     assert admin["is_active"] is True
 
 
@@ -65,6 +66,30 @@ def test_ban_and_unban_user(client: TestClient):
         json={"username": "blocked_user", "password": "secret123"},
     )
     assert login_ok.status_code == 200
+
+
+def test_assign_custom_role(client: TestClient):
+    register = client.post(
+        "/api/v1/auth/register",
+        json={"username": "kent_user", "password": "secret123", "accept_terms": True},
+    )
+    assert register.status_code in (200, 201)
+
+    client = _admin_client(client)
+    users = client.get("/api/v1/users").json()
+    target = next(item for item in users if item["username"] == "kent_user")
+
+    patch = client.patch(f"/api/v1/users/{target['id']}", json={"role": "kent"})
+    assert patch.status_code == 200
+    assert patch.json()["role"] == "kent"
+    assert patch.json()["is_admin"] is False
+
+    me = client.post(
+        "/api/v1/auth/login",
+        json={"username": "kent_user", "password": "secret123"},
+    )
+    assert me.status_code == 200
+    assert me.json()["role"] == "kent"
 
 
 def test_cannot_ban_self(client: TestClient):

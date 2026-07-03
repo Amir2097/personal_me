@@ -52,7 +52,13 @@ const submit = async () => {
       mode.value === 'login'
         ? await api.login(username.value, password.value)
         : await api.register(username.value, password.value, email.value || undefined, acceptTerms.value)
-    auth.setSession(response.username || username.value, response.is_admin ?? false)
+    auth.setSession(response.username || username.value, response.is_admin ?? false, response.role)
+    try {
+      const profile = await api.me()
+      auth.setProfile(profile)
+    } catch {
+      // session already set from login response
+    }
     emit('success')
     emit('close')
   } catch {
@@ -94,12 +100,10 @@ const submit = async () => {
           placeholder="email (для сброса пароля)"
           class="w-full rounded border border-terminal-gray/60 bg-transparent px-3 py-2 text-sm outline-none"
         />
-        <input
+        <PasswordInput
           v-model="password"
-          type="password"
           :autocomplete="mode === 'login' ? 'current-password' : 'new-password'"
           placeholder="пароль"
-          class="w-full rounded border border-terminal-gray/60 bg-transparent px-3 py-2 text-sm outline-none"
         />
         <p v-if="error" class="text-sm text-red-400">{{ error }}</p>
         <label

@@ -27,7 +27,7 @@ def test_oidc_authorization_code_flow(client: TestClient):
     approve = client.post(
         "/api/v1/oidc/authorize/approve",
         json={
-            "client_id": "personal-me-dev",
+            "client_id": "dautovtech-dev",
             "redirect_uri": "http://localhost/oauth/callback",
             "scope": "openid profile",
             "state": "xyz",
@@ -46,7 +46,7 @@ def test_oidc_authorization_code_flow(client: TestClient):
             "grant_type": "authorization_code",
             "code": code,
             "redirect_uri": "http://localhost/oauth/callback",
-            "client_id": "personal-me-dev",
+            "client_id": "dautovtech-dev",
             "client_secret": "dev-secret-change-me",
         },
     )
@@ -81,7 +81,7 @@ def test_oidc_pkce_authorization_code_flow(client: TestClient):
     approve = client.post(
         "/api/v1/oidc/authorize/approve",
         json={
-            "client_id": "personal-me-dev",
+            "client_id": "dautovtech-dev",
             "redirect_uri": "http://localhost/oauth/callback",
             "scope": "openid profile",
             "state": "pkce-state",
@@ -100,7 +100,7 @@ def test_oidc_pkce_authorization_code_flow(client: TestClient):
             "grant_type": "authorization_code",
             "code": code,
             "redirect_uri": "http://localhost/oauth/callback",
-            "client_id": "personal-me-dev",
+            "client_id": "dautovtech-dev",
             "client_secret": "dev-secret-change-me",
             "code_verifier": code_verifier,
         },

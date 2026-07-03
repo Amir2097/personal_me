@@ -12,8 +12,8 @@ from app.schemas.project import ProjectCreate, ProjectUpdate, parse_gallery_urls
 
 DEFAULT_PROJECTS: list[dict[str, Any]] = [
     {
-        "slug": "personal-me",
-        "title": "Personal Me",
+        "slug": "dautovtech",
+        "title": "DAUTOVTECH",
         "summary": "Terminal/IDE хаб разработчика с JWT и интеграциями.",
         "description": (
             "Монорепозиторий: FastAPI backend, Nuxt 3 frontend, PostgreSQL, "
@@ -65,6 +65,13 @@ def _normalize_slug(slug: str) -> str:
 
 def ensure_default_projects(session: Session) -> None:
     """Заполнить таблицу дефолтными проектами при первом запуске."""
+    legacy = session.exec(select(Project).where(Project.slug == "personal-me")).first()
+    if legacy and not session.exec(select(Project).where(Project.slug == "dautovtech")).first():
+        legacy.slug = "dautovtech"
+        legacy.title = "DAUTOVTECH"
+        session.add(legacy)
+        session.commit()
+
     existing_slugs = {item.slug for item in session.exec(select(Project)).all()}
     created = False
     for data in DEFAULT_PROJECTS:

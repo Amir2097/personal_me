@@ -44,7 +44,7 @@ def send_password_reset_email(to_email: str, reset_url: str, expires_minutes: in
     """Send password reset link to the user."""
     send_email(
         to_email=to_email,
-        subject="Сброс пароля — Personal Me",
+        subject="Сброс пароля — DAUTOVTECH",
         body="\n".join(
             [
                 "Вы запросили сброс пароля.",

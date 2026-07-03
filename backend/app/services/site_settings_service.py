@@ -23,7 +23,7 @@ def _skills_list(raw: str) -> list[str]:
 def _defaults_from_env() -> SiteSettings:
     return SiteSettings(
         id=1,
-        site_name="personal_me",
+        site_name="DAUTOVTECH",
         owner_name=settings.site_owner_name,
         tagline=settings.site_tagline,
         bio=settings.site_bio,
@@ -43,6 +43,10 @@ def ensure_default_site_settings(session: Session) -> None:
     """Создать строку настроек из env при первом запуске."""
     existing = session.get(SiteSettings, 1)
     if existing:
+        if existing.site_name.strip().lower() in {"personal_me", "personal-me"}:
+            existing.site_name = "DAUTOVTECH"
+            session.add(existing)
+            session.commit()
         return
     row = _defaults_from_env()
     session.add(row)

@@ -22,9 +22,9 @@ from app.models.user import User
 from app.schemas.oidc import OAuthClientCreate, OidcTokenResponse, UserInfoResponse
 
 DEFAULT_OAUTH_CLIENT = {
-    "client_id": "personal-me-dev",
+    "client_id": "dautovtech-dev",
     "client_secret": "dev-secret-change-me",
-    "name": "Personal Me Dev",
+    "name": "DAUTOVTECH Dev",
     "redirect_uris": [
         "http://localhost/oauth/callback",
         "http://127.0.0.1/oauth/callback",
@@ -52,6 +52,16 @@ def _redirect_uris_to_str(uris: list[str]) -> str:
 
 def ensure_default_oauth_client(session: Session) -> None:
     """Сид dev OAuth клиента."""
+    legacy = session.exec(
+        select(OAuthClient).where(OAuthClient.client_id == "personal-me-dev")
+    ).first()
+    if legacy:
+        legacy.client_id = DEFAULT_OAUTH_CLIENT["client_id"]
+        legacy.name = DEFAULT_OAUTH_CLIENT["name"]
+        session.add(legacy)
+        session.commit()
+        return
+
     existing = session.exec(
         select(OAuthClient).where(OAuthClient.client_id == DEFAULT_OAUTH_CLIENT["client_id"])
     ).first()
@@ -318,5 +328,8 @@ def get_userinfo(session: Session, access_token: str) -> UserInfoResponse:
     return UserInfoResponse(
         sub=user.username,
         preferred_username=user.username,
+        name=user.display_name or user.username,
+        email=user.email,
+        picture=user.avatar_url or None,
         is_admin=user.is_admin,
     )

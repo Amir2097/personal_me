@@ -1,4 +1,4 @@
-# Personal Me: Terminal/IDE Developer Hub
+# DAUTOVTECH: Terminal/IDE Developer Hub
 
 Интерактивный личный портал разработчика в стиле терминала и IDE.  
 Главная страница эмулирует CLI: пользователь вводит команды (`help`, `login`, `projects`, `clear`), получает ответы от FastAPI backend и после авторизации может работать с расширенными сервисами.
@@ -173,13 +173,13 @@ Discovery: `GET /api/v1/oidc/.well-known/openid-configuration`
 | `/api/v1/oidc/jwks` | Публичные ключи |
 | `/api/v1/oidc/clients` | Admin CRUD OAuth клиентов |
 
-Dev-клиент по умолчанию: `personal-me-dev` / `dev-secret-change-me`  
+Dev-клиент по умолчанию: `dautovtech-dev` / `dev-secret-change-me`  
 Redirect URI: `http://localhost/oauth/callback`
 
 Пример authorize URL:
 
 ```
-http://localhost/api/v1/oidc/authorize?response_type=code&client_id=personal-me-dev&redirect_uri=http://localhost/oauth/callback&scope=openid%20profile&state=xyz&nonce=abc
+http://localhost/api/v1/oidc/authorize?response_type=code&client_id=dautovtech-dev&redirect_uri=http://localhost/oauth/callback&scope=openid%20profile&state=xyz&nonce=abc
 ```
 
 ### CI

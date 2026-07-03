@@ -13,7 +13,7 @@ const regular = computed(() => projects.value.filter((item) => !item.featured))
 
 useSiteSeo({
   title: 'Projects',
-  description: 'Портфолио проектов personal_me',
+  description: 'Портфолио проектов DAUTOVTECH',
   path: '/projects'
 })
 
@@ -32,7 +32,7 @@ onMounted(async () => {
   <main class="min-h-screen bg-terminal-black px-4 py-6 text-terminal-green md:py-8">
     <div class="mx-auto flex w-full max-w-6xl flex-col gap-5 md:gap-6">
       <HubIntro compact />
-      <TerminalShell cwd="~/projects" session="terminal://personal_me/projects" tall>
+      <TerminalShell cwd="~/projects" session="terminal://DAUTOVTECH/projects" tall>
         <div class="min-h-0 flex-1 overflow-y-auto p-5 text-sm">
           <p class="mb-4 text-xs uppercase tracking-[0.25em] text-terminal-gray">portfolio</p>
           <h1 class="mb-6 text-2xl">Проекты</h1>

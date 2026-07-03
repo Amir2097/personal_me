@@ -15,7 +15,7 @@ def upgrade() -> None:
     op.create_table(
         "sitesettings",
         sa.Column("id", sa.Integer(), nullable=False),
-        sa.Column("site_name", sa.String(), nullable=False, server_default="personal_me"),
+        sa.Column("site_name", sa.String(), nullable=False, server_default="DAUTOVTECH"),
         sa.Column("owner_name", sa.String(), nullable=False, server_default=""),
         sa.Column("tagline", sa.String(), nullable=False, server_default=""),
         sa.Column("bio", sa.String(), nullable=False, server_default=""),

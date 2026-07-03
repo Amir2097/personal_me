@@ -6,7 +6,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 class Settings(BaseSettings):
     """Runtime settings loaded from environment variables."""
 
-    app_name: str = "Personal Me Terminal API"
+    app_name: str = "DAUTOVTECH Terminal API"
     api_v1_prefix: str = "/api/v1"
     jwt_secret_key: str = "change-me-in-production"
     jwt_algorithm: str = "HS256"
@@ -54,6 +54,8 @@ class Settings(BaseSettings):
     site_resume_url: str = ""
     site_motd: str = "Добро пожаловать. Введите help или откройте projects."
     site_url: str = "http://localhost"
+    uploads_dir: str = "uploads"
+    avatar_max_bytes: int = 2 * 1024 * 1024
 
     model_config = SettingsConfigDict(
         env_file=".env",

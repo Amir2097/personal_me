@@ -30,7 +30,7 @@ const form = ref<Omit<SiteSettings, 'updated_at'>>({
 })
 
 const previewTitle = computed(() => {
-  const name = form.value.site_name || 'personal_me'
+  const name = form.value.site_name || 'DAUTOVTECH'
   const suffix = form.value.seo_title_suffix || 'Terminal IDE'
   return `${name} // ${suffix}`
 })
@@ -82,7 +82,7 @@ onMounted(load)
   <main class="min-h-screen bg-terminal-black px-4 py-6 text-terminal-green md:py-8">
     <div class="mx-auto flex w-full max-w-6xl flex-col gap-5 md:gap-6">
       <HubIntro compact />
-      <TerminalShell cwd="~/admin/seo" session="terminal://personal_me/admin/seo" tall>
+      <TerminalShell cwd="~/admin/seo" session="terminal://DAUTOVTECH/admin/seo" tall>
         <div class="min-h-0 flex-1 overflow-y-auto p-5 text-sm">
           <p class="mb-1 text-xs uppercase tracking-[0.25em] text-terminal-gray">admin</p>
           <h1 class="mb-2 text-xl">SEO и контент сайта</h1>
@@ -100,7 +100,7 @@ onMounted(load)
                 <div class="space-y-3">
                   <input
                     v-model="form.site_name"
-                    placeholder="site_name (personal_me)"
+                    placeholder="site_name (DAUTOVTECH)"
                     class="w-full rounded border border-terminal-gray/60 bg-transparent px-3 py-2 outline-none"
                   />
                   <input

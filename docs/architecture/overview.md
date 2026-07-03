@@ -2,7 +2,7 @@
 
 ## Context
 
-`personal_me` is a monorepo for a terminal-like personal developer portal.
+**DAUTOVTECH** is a monorepo for a terminal-like personal developer portal (repository folder: `personal_me`).
 
 ## Runtime Topology
 

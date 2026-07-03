@@ -1,6 +1,10 @@
 """Auth request and response DTOs."""
 
-from pydantic import BaseModel, EmailStr, Field
+from datetime import datetime
+
+from pydantic import BaseModel, EmailStr, Field, field_validator, model_validator
+
+from app.core.email_validation import normalize_optional_email
 
 
 class LoginRequest(BaseModel):
@@ -30,6 +34,7 @@ class TokenResponse(BaseModel):
     token_type: str = "bearer"
     username: str = ""
     is_admin: bool = False
+    role: str = "user"
 
 
 class UserProfile(BaseModel):
@@ -37,7 +42,42 @@ class UserProfile(BaseModel):
 
     username: str
     is_admin: bool
+    role: str = "user"
     email: str | None = None
+    display_name: str = ""
+    avatar_url: str = ""
+    bio: str = ""
+    location: str = ""
+    website: str = ""
+    telegram: str = ""
+    github: str = ""
+    created_at: datetime | None = None
+    last_login_at: datetime | None = None
+
+
+class UserProfileUpdate(BaseModel):
+    """Обновление профиля пользователя."""
+
+    email: str | None = None
+    display_name: str | None = Field(default=None, max_length=64)
+    avatar_url: str | None = Field(default=None, max_length=512)
+    bio: str | None = Field(default=None, max_length=500)
+    location: str | None = Field(default=None, max_length=128)
+    website: str | None = Field(default=None, max_length=256)
+    telegram: str | None = Field(default=None, max_length=128)
+    github: str | None = Field(default=None, max_length=256)
+
+    @field_validator("email")
+    @classmethod
+    def validate_email(cls, value: str | None) -> str | None:
+        return normalize_optional_email(value)
+
+    @field_validator("display_name", "avatar_url", "bio", "location", "website", "telegram", "github")
+    @classmethod
+    def strip_optional_text(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+        return value.strip()
 
 
 class RefreshTokenRequest(BaseModel):
@@ -86,6 +126,13 @@ class ChangePasswordRequest(BaseModel):
 
     current_password: str = Field(..., min_length=3, max_length=128)
     new_password: str = Field(..., min_length=8, max_length=128)
+    new_password_confirm: str = Field(..., min_length=8, max_length=128)
+
+    @model_validator(mode="after")
+    def passwords_match(self) -> "ChangePasswordRequest":
+        if self.new_password != self.new_password_confirm:
+            raise ValueError("Новый пароль и подтверждение не совпадают.")
+        return self
 
 
 class PasswordResetTokenResponse(BaseModel):

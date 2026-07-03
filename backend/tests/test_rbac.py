@@ -9,7 +9,7 @@ def test_projects_public_for_guest(client: TestClient):
     assert response.status_code == 200
     body = response.json()
     assert body["requires_auth"] is False
-    assert "personal-me" in body["output"]
+    assert "dautovtech" in body["output"]
 
 
 def test_integrations_requires_admin(client: TestClient):

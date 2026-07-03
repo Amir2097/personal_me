@@ -6,6 +6,7 @@ from fastapi import HTTPException, status
 from sqlalchemy import func
 from sqlmodel import Session, select
 
+from app.core.roles import STORED_ROLES, is_valid_stored_role, sync_admin_flag
 from app.models.refresh_token import RefreshToken
 from app.models.user import User
 from app.schemas.admin_user import AdminUserRead, AdminUserStats, AdminUserUpdate
@@ -27,6 +28,7 @@ def _to_read(user: User, last_session_at: datetime | None) -> AdminUserRead:
         id=user.id,
         username=user.username,
         email=user.email,
+        role=user.role,
         is_admin=user.is_admin,
         is_active=user.is_active,
         created_at=user.created_at,
@@ -59,6 +61,19 @@ def _count_admins(session: Session) -> int:
     )
 
 
+def _resolve_target_role(payload: AdminUserUpdate, user: User) -> str | None:
+    if payload.role is not None:
+        if not is_valid_stored_role(payload.role):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Недопустимая роль. Доступны: {', '.join(STORED_ROLES)}.",
+            )
+        return payload.role
+    if payload.is_admin is not None:
+        return "admin" if payload.is_admin else "user"
+    return None
+
+
 def update_user(
     session: Session,
     user_id: int,
@@ -72,19 +87,21 @@ def update_user(
             detail="Пользователь не найден.",
         )
 
+    target_role = _resolve_target_role(payload, user)
+
     if payload.is_active is False and user.id == actor.id:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Нельзя заблокировать свой аккаунт.",
         )
 
-    if payload.is_admin is False and user.id == actor.id:
+    if target_role is not None and target_role != "admin" and user.id == actor.id and user.is_admin:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Нельзя снять права администратора у себя.",
         )
 
-    if payload.is_admin is False and user.is_admin and _count_admins(session) <= 1:
+    if target_role is not None and target_role != "admin" and user.is_admin and _count_admins(session) <= 1:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Нельзя снять права у последнего администратора.",
@@ -101,8 +118,9 @@ def update_user(
         if not payload.is_active:
             revoke_user_refresh_tokens(session, user.username)
 
-    if payload.is_admin is not None:
-        user.is_admin = payload.is_admin
+    if target_role is not None:
+        user.role = target_role
+        user.is_admin = sync_admin_flag(target_role)
 
     session.add(user)
     session.commit()

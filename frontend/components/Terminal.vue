@@ -15,7 +15,7 @@ interface TerminalLine {
 }
 
 const EXTENDED_BOOT = [
-  'POST ok — personal_me hub',
+  'POST ok — DAUTOVTECH hub',
   'loading kernel modules... ok',
   'mount /dev/portfolio... ok',
   'starting integration daemon... ok',
@@ -46,8 +46,8 @@ const terminalEl = ref<HTMLElement | null>(null)
 const terminalLines = computed<TerminalLine[]>(() => lines.value)
 const prompt = computed(() =>
   auth.isAuthenticated
-    ? `${auth.username || 'user'}@personal-me:~$`
-    : 'guest@personal-me:~$'
+    ? `${auth.displayLabel || auth.username || 'user'}@dautovtech:~$`
+    : 'guest@dautovtech:~$'
 )
 const activeTab = ref<'terminal' | 'projects' | 'logs'>('terminal')
 const portfolioProjects = ref<Project[]>([])
@@ -59,7 +59,7 @@ const authModalMode = ref<'login' | 'register'>('login')
 const nowStamp = () => new Date().toLocaleTimeString('ru-RU')
 
 const bootSequence = (): TerminalLine[] => [
-  { type: 'system', value: 'POST ok — personal_me hub', timestamp: nowStamp() },
+  { type: 'system', value: 'POST ok — DAUTOVTECH hub', timestamp: nowStamp() },
   { type: 'system', value: `welcome, ${config.public.ownerName} developer hub`, timestamp: nowStamp() },
   { type: 'system', value: 'работодателям: projects · пользователям: services · help', timestamp: nowStamp() },
   { type: 'system', value: "session ready — type 'help' for commands", timestamp: nowStamp() }
@@ -238,7 +238,7 @@ const execute = async () => {
     if (!auth.isAuthenticated) {
       addLine('error', 'Требуется авторизация.')
     } else {
-      addLine('output', `Профиль: ${auth.username}. Откройте /profile для email и пароля.`)
+      addLine('output', `Профиль: ${auth.displayLabel}. Откройте /profile для настроек.`)
     }
     await scrollToBottom()
     return
@@ -305,7 +305,7 @@ const execute = async () => {
   }
 
   if (raw === 'pwd') {
-    addLine('output', '~/personal_me')
+    addLine('output', '~/dautovtech')
     await scrollToBottom()
     return
   }
@@ -611,9 +611,9 @@ const onAuthSuccess = async () => {
 </script>
 
 <template>
-  <TerminalShell cwd="~" session="terminal://personal_me/session">
+  <TerminalShell cwd="~" session="terminal://dautovtech/session">
     <template #toolbar>
-      <div class="flex items-center gap-2 text-xs">
+      <div class="flex flex-wrap items-center gap-1.5 text-xs sm:gap-2">
         <button
           class="rounded px-2 py-1"
           :class="activeTab === 'terminal' ? [themeStyles.output, 'bg-white/10'] : 'text-terminal-gray'"
@@ -639,9 +639,13 @@ const onAuthSuccess = async () => {
     </template>
 
     <div class="flex min-h-0 flex-1 flex-col">
-      <div v-if="activeTab === 'terminal'" ref="terminalEl" class="terminal-scroll min-h-0 flex-1 overflow-y-auto p-5">
-        <div v-for="(line, idx) in terminalLines" :key="idx" class="mb-2 grid grid-cols-[76px_1fr] gap-3 whitespace-pre-wrap text-sm">
-          <span class="text-terminal-gray">{{ getLineTimestamp(line) }}</span>
+      <div v-if="activeTab === 'terminal'" ref="terminalEl" class="terminal-scroll min-h-0 flex-1 overflow-y-auto p-3 sm:p-5">
+        <div
+          v-for="(line, idx) in terminalLines"
+          :key="idx"
+          class="mb-2 flex flex-col gap-0.5 whitespace-pre-wrap text-sm sm:grid sm:grid-cols-[76px_1fr] sm:gap-3"
+        >
+          <span class="text-[11px] text-terminal-gray sm:text-sm">{{ getLineTimestamp(line) }}</span>
           <span v-if="getLineType(line) === 'input'" :class="themeStyles.input">
             {{ prompt }} {{ getLineValue(line) }}
           </span>
@@ -689,9 +693,10 @@ const onAuthSuccess = async () => {
         <p v-if="!logs.length" class="text-terminal-gray">Событий пока нет.</p>
       </div>
 
-      <form class="border-t px-5 py-4" :class="themeStyles.border" @submit.prevent="execute">
-        <div class="flex items-center gap-2 text-sm">
-          <span :class="themeStyles.input">{{ prompt }}</span>
+      <form class="border-t px-3 py-3 sm:px-5 sm:py-4" :class="themeStyles.border" @submit.prevent="execute">
+        <div class="flex min-w-0 items-center gap-2 text-sm">
+          <span class="hidden shrink-0 sm:inline" :class="themeStyles.input">{{ prompt }}</span>
+          <span class="shrink-0 sm:hidden" :class="themeStyles.input">$</span>
           <input
             v-model="command"
             type="text"
@@ -710,7 +715,7 @@ const onAuthSuccess = async () => {
       <span>hist:{{ history.length }}</span>
     </template>
     <template #status-actions>
-      <span class="text-terminal-gray">Ctrl+L → clear</span>
+      <span class="hidden text-terminal-gray sm:inline">Ctrl+L → clear</span>
     </template>
   </TerminalShell>
 
