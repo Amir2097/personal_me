@@ -123,6 +123,9 @@ const closeSidebar = () => {
         <NuxtLink to="/contact" :class="navLinkClass('/contact')" @click="closeSidebar">
           ~/contact
         </NuxtLink>
+        <NuxtLink to="/hobby" :class="navLinkClass('/hobby')" @click="closeSidebar">
+          ~/hobby
+        </NuxtLink>
         <template v-if="auth.isAdmin">
           <NuxtLink
             to="/admin/integrations"
@@ -158,6 +161,7 @@ const closeSidebar = () => {
         <li>help · clear</li>
         <li>login · logout</li>
         <li>projects · go &lt;svc&gt;</li>
+        <li>hobby · billiards</li>
         <li>theme auto|green|amber|blue</li>
         <li>fx preset retro|hacker</li>
       </ul>

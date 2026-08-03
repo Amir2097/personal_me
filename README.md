@@ -18,6 +18,7 @@
    ```
 3. Откройте сервисы:
    - UI: `http://localhost`
+   - Hobby / Billiards: `http://localhost/hobby` и `http://localhost/billiards/`
    - Backend Swagger: `http://localhost/api/docs`
    - Backend OpenAPI: `http://localhost/api/openapi.json`
 
@@ -37,6 +38,7 @@ docker compose down -v
 
 - `backend` — API, auth, обработка терминальных команд.
 - `frontend` — Nuxt-приложение с терминальным UI.
+- `apps/billiards` — подсервис Billiards Kolkhoz Manager (Nuxt, offline-first).
 - `docs` — техническая документация и архитектурные заметки.
 - `nginx` — конфиг reverse proxy.
 - `docker-compose.yml` — оркестрация окружения.

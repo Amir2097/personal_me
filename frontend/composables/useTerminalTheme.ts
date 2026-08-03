@@ -13,7 +13,6 @@ export type TerminalThemeStyles = {
 }
 
 const VALID_THEMES: TerminalTheme[] = ['green', 'amber', 'blue', 'auto']
-const RESOLVED_THEMES: ResolvedTerminalTheme[] = ['green', 'amber', 'blue']
 
 export function isTerminalTheme(value: string | null | undefined): value is TerminalTheme {
   return !!value && VALID_THEMES.includes(value as TerminalTheme)
@@ -58,32 +57,37 @@ function resolveAutoTheme(): ResolvedTerminalTheme {
   return window.matchMedia('(prefers-color-scheme: light)').matches ? 'amber' : 'green'
 }
 
+let mediaQueryBound = false
+
 export function useTerminalTheme() {
   const theme = useState<TerminalTheme>('terminal-theme', () => 'green')
   const autoResolved = useState<ResolvedTerminalTheme>('terminal-theme-auto', () => 'green')
+  const hydrated = useState('terminal-theme-hydrated', () => false)
 
   const refreshAuto = () => {
     autoResolved.value = resolveAutoTheme()
   }
 
-  onMounted(() => {
+  const hydrateFromStorage = () => {
+    if (!import.meta.client || hydrated.value) return
     const saved = localStorage.getItem('terminal_theme')
     if (isTerminalTheme(saved)) {
       theme.value = saved
     }
     refreshAuto()
-  })
-
-  let mediaQuery: MediaQueryList | null = null
-  if (import.meta.client) {
-    onMounted(() => {
-      mediaQuery = window.matchMedia('(prefers-color-scheme: light)')
-      mediaQuery.addEventListener('change', refreshAuto)
-    })
-    onUnmounted(() => {
-      mediaQuery?.removeEventListener('change', refreshAuto)
-    })
+    hydrated.value = true
   }
+
+  const bindMediaQuery = () => {
+    if (!import.meta.client || mediaQueryBound) return
+    mediaQueryBound = true
+    const mediaQuery = window.matchMedia('(prefers-color-scheme: light)')
+    mediaQuery.addEventListener('change', refreshAuto)
+  }
+
+  // Safe in both component setup and Nuxt plugins (no onMounted required).
+  hydrateFromStorage()
+  bindMediaQuery()
 
   watch(theme, (nextTheme) => {
     if (import.meta.client) {

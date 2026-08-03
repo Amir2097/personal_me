@@ -29,6 +29,7 @@ export function applyTerminalFxFlags(flags: TerminalFxFlag[]) {
 
 export function useTerminalFx() {
   const flags = useState<TerminalFxFlag[]>('terminal-fx-flags', () => [])
+  const hydrated = useState('terminal-fx-hydrated', () => false)
 
   const sync = (value: TerminalFxFlag[]) => {
     if (import.meta.client) {
@@ -37,10 +38,11 @@ export function useTerminalFx() {
     }
   }
 
-  onMounted(() => {
+  if (import.meta.client && !hydrated.value) {
     flags.value = parseFxFlags(localStorage.getItem('terminal_fx'))
     applyTerminalFxFlags(flags.value)
-  })
+    hydrated.value = true
+  }
 
   watch(flags, sync, { deep: true })
 

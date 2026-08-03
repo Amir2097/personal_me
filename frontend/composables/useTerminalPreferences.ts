@@ -4,13 +4,7 @@ export function useTerminalPreferences() {
   const cursorEnabled = useState('terminal-cursor-enabled', () => true)
   const soundEnabled = useState('terminal-sound-enabled', () => false)
   const faviconAlerts = useState('terminal-favicon-alerts', () => true)
-
-  onMounted(() => {
-    cursorEnabled.value = localStorage.getItem('terminal_cursor') !== 'off'
-    soundEnabled.value = localStorage.getItem('terminal_sound') === 'on'
-    faviconAlerts.value = localStorage.getItem('terminal_favicon_alerts') !== 'off'
-    applyCursor(cursorEnabled.value)
-  })
+  const hydrated = useState('terminal-prefs-hydrated', () => false)
 
   const applyCursor = (enabled: boolean) => {
     if (!import.meta.client) return
@@ -19,6 +13,14 @@ export function useTerminalPreferences() {
     } else {
       document.documentElement.dataset.terminalCursor = 'off'
     }
+  }
+
+  if (import.meta.client && !hydrated.value) {
+    cursorEnabled.value = localStorage.getItem('terminal_cursor') !== 'off'
+    soundEnabled.value = localStorage.getItem('terminal_sound') === 'on'
+    faviconAlerts.value = localStorage.getItem('terminal_favicon_alerts') !== 'off'
+    applyCursor(cursorEnabled.value)
+    hydrated.value = true
   }
 
   watch(cursorEnabled, (value) => {

@@ -8,6 +8,7 @@
 
 - `nginx` is the public entrypoint on port `80`.
 - `frontend` (Nuxt 3 SSR) serves terminal UI on port `3000`.
+- `billiards` (Nuxt) serves Kolkhoz Manager under `/billiards/` on port `3010`.
 - `backend` (FastAPI) serves API on port `8000`.
 - `db` (PostgreSQL) stores relational data.
 
@@ -15,8 +16,9 @@ Traffic:
 
 1. Browser -> `nginx`
 2. `nginx` `/` -> `frontend`
-3. `nginx` `/api/*` -> `backend`
-4. `backend` -> `postgres`
+3. `nginx` `/billiards/` -> `billiards`
+4. `nginx` `/api/*` -> `backend`
+5. `backend` -> `postgres`
 
 ## Auth and Command Flow
 
@@ -27,6 +29,12 @@ Traffic:
 5. User runs command (for example `projects`).
 6. Frontend calls `POST /api/v1/terminal/execute` with bearer token.
 7. Backend validates token and executes command policy.
+
+## Hobby / Billiards
+
+- Hub page `/hobby` links to the billiards subservice.
+- Integration key `billiards` enables `go billiards` from the terminal.
+- Game state is offline-first (`localStorage`); FastAPI sync can be added later.
 
 ## Scalability Notes
 

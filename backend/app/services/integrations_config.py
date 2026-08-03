@@ -29,6 +29,11 @@ DEFAULT_INTEGRATIONS: dict[str, dict[str, Any]] = {
         "requires_auth": False,
         "label": "Swagger API",
     },
+    "billiards": {
+        "url": "http://localhost/billiards/",
+        "requires_auth": False,
+        "label": "Billiards Kolkhoz",
+    },
 }
 
 

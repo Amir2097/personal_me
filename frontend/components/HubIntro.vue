@@ -52,6 +52,8 @@ withDefaults(
         <code class="text-terminal-green/90">services</code>
         <span class="text-terminal-gray"> · </span>
         <code class="text-terminal-green/90">go &lt;service&gt;</code>
+        <span class="text-terminal-gray"> · </span>
+        <NuxtLink to="/hobby" class="text-terminal-green hover:underline">hobby</NuxtLink>
       </span>
       <span>
         <span class="text-cyan-300">гостям</span>
