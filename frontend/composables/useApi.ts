@@ -125,9 +125,21 @@ export const useApi = () => {
     ? config.public.apiBaseUrl
     : config.apiInternalUrl
 
+  // On SSR, forward the browser Cookie header so httpOnly auth cookies reach the API.
+  const ssrHeaders = import.meta.server
+    ? (() => {
+        try {
+          return useRequestHeaders(['cookie'])
+        } catch {
+          return {} as Record<string, string>
+        }
+      })()
+    : {}
+
   const fetchDefaults = {
     baseURL: apiBaseUrl,
-    credentials: 'include' as const
+    credentials: 'include' as const,
+    headers: ssrHeaders
   }
 
   type ExecuteCommandResponse = {

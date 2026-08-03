@@ -24,3 +24,10 @@ npm run dev
 - `/billiards/tv` — TV-табло
 
 Состояние в `localStorage` (`dautovtech_kolkhoz_v1`).
+
+## Авторизация
+
+- Страница хаба `/hobby` публичная; запуск Kolkhoz требует login.
+- `go billiards` / кнопка на `/hobby` открывают URL с одноразовым `sso_code`.
+- Middleware billiards обменивает код (или проверяет cookie/JWT через `/auth/me`).
+- Гостей перенаправляет на `/hobby?auth=required`.

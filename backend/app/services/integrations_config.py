@@ -31,7 +31,8 @@ DEFAULT_INTEGRATIONS: dict[str, dict[str, Any]] = {
     },
     "billiards": {
         "url": "http://localhost/billiards/",
-        "requires_auth": False,
+        "requires_auth": True,
+        "use_sso": True,
         "label": "Billiards Kolkhoz",
     },
 }

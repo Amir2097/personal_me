@@ -29,7 +29,9 @@ export default defineNuxtConfig({
   runtimeConfig: {
     public: {
       hubUrl: process.env.NUXT_PUBLIC_HUB_URL || 'http://localhost',
-      brandName: process.env.NUXT_PUBLIC_BRAND_NAME || 'DAUTOVTECH'
+      brandName: process.env.NUXT_PUBLIC_BRAND_NAME || 'DAUTOVTECH',
+      // Empty = same-origin /api via nginx. Standalone :3010 falls back to hubUrl in useHubAuth.
+      apiBaseUrl: process.env.NUXT_PUBLIC_API_BASE_URL || ''
     }
   },
   vite: {

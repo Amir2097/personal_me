@@ -1,6 +1,7 @@
 <script setup lang="ts">
 const config = useRuntimeConfig()
 const store = useKolkhozStore()
+const { username } = useHubAuth()
 
 const hubHref = computed(() => config.public.hubUrl || '/')
 </script>
@@ -20,6 +21,12 @@ const hubHref = computed(() => config.public.hubUrl || '/')
         </div>
       </div>
       <nav class="flex flex-wrap items-center gap-2 text-sm">
+        <span
+          v-if="username"
+          class="hidden rounded-md border border-white/10 px-2 py-1 text-[11px] text-cloth-muted sm:inline"
+        >
+          {{ username }}
+        </span>
         <NuxtLink to="/" class="btn-ghost inline-flex items-center gap-1 py-1.5 text-xs">
           <AppIcon name="play" size="sm" /> Режимы
         </NuxtLink>
