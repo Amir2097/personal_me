@@ -19,6 +19,8 @@ const props = withDefaults(
       | 'clipboard'
       | 'sun'
       | 'moon'
+      | 'volume'
+      | 'volume-off'
     size?: 'sm' | 'md' | 'lg'
   }>(),
   { size: 'md' }
@@ -119,6 +121,15 @@ const sizeClass = computed(() => {
     </template>
     <template v-else-if="name === 'moon'">
       <path d="M21 14.5A8.5 8.5 0 0 1 9.5 3 7 7 0 1 0 21 14.5Z" />
+    </template>
+    <template v-else-if="name === 'volume'">
+      <path d="M11 5 6 9H3v6h3l5 4V5Z" />
+      <path d="M15.5 8.5a5 5 0 0 1 0 7" />
+      <path d="M18 6a8 8 0 0 1 0 12" />
+    </template>
+    <template v-else-if="name === 'volume-off'">
+      <path d="M11 5 6 9H3v6h3l5 4V5Z" />
+      <path d="m22 9-6 6M16 9l6 6" />
     </template>
   </svg>
 </template>

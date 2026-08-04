@@ -31,3 +31,21 @@ npm run dev
 - `go billiards` / кнопка на `/hobby` открывают URL с одноразовым `sso_code`.
 - Middleware billiards обменивает код (или проверяет cookie/JWT через `/auth/me`).
 - Гостей перенаправляет на `/hobby?auth=required`.
+
+## Синк телефон ↔ TV
+
+1. На пульте (`/tournament/play`) блок **Синк** → «Открыть синк» (нужна авторизация).
+2. Появится код комнаты — откройте на TV `/billiards/tv?room=КОД` или введите код на табло.
+3. Хост пушит состояние при каждом изменении; TV опрашивает API ~раз в секунду.
+4. API: `POST/PUT/GET /api/v1/kolkhoz/sessions`.
+
+## История партий
+
+Снимки на сервере под аккаунтом хаба:
+
+- `POST /api/v1/kolkhoz/games` — сохранить текущую партию
+- `GET /api/v1/kolkhoz/games` — список
+- `GET /api/v1/kolkhoz/games/{id}` — загрузить state
+- `DELETE /api/v1/kolkhoz/games/{id}` — удалить
+
+На главной Kolkhoz и на пультах — блок **История партий**.

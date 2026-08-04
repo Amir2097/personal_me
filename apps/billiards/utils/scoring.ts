@@ -204,6 +204,7 @@ export const undoEvent = (players: Player[], event: ScoreEvent): Player[] => {
       player.id === event.scorerId ? { ...player, status: 'active' as const } : player
     )
   }
+  // score / penalty / fine_* — reverse deltas
   return players.map((player) => {
     const delta = event.deltas[player.id]
     if (delta === undefined) return player

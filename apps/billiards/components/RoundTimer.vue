@@ -1,53 +1,16 @@
 <script setup lang="ts">
 const store = useKolkhozStore()
+const sounds = useGameSounds()
 
 const remainingMs = ref(0)
 const hasBeeped = ref(false)
 let timer: ReturnType<typeof setInterval> | null = null
-let audioCtx: AudioContext | null = null
 
 const format = (ms: number) => {
   const total = Math.max(0, Math.floor(ms / 1000))
   const m = Math.floor(total / 60)
   const s = total % 60
   return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`
-}
-
-const ensureAudio = async () => {
-  if (typeof window === 'undefined') return null
-  if (!audioCtx) audioCtx = new AudioContext()
-  if (audioCtx.state === 'suspended') {
-    try {
-      await audioCtx.resume()
-    } catch {
-      /* ignore */
-    }
-  }
-  return audioCtx
-}
-
-/** Short triple chirp when round time is up (unless muted). */
-const beep = async () => {
-  if (store.tournament.timerMuted || typeof window === 'undefined') return
-  const ctx = await ensureAudio()
-  if (!ctx) return
-  try {
-    for (let i = 0; i < 3; i += 1) {
-      const osc = ctx.createOscillator()
-      const gain = ctx.createGain()
-      osc.connect(gain)
-      gain.connect(ctx.destination)
-      osc.frequency.value = 880 + i * 60
-      const t0 = ctx.currentTime + i * 0.18
-      gain.gain.setValueAtTime(0.0001, t0)
-      gain.gain.exponentialRampToValueAtTime(0.08, t0 + 0.02)
-      gain.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.14)
-      osc.start(t0)
-      osc.stop(t0 + 0.15)
-    }
-  } catch {
-    /* ignore */
-  }
 }
 
 const tick = () => {
@@ -67,7 +30,7 @@ const tick = () => {
     remainingMs.value = 0
     if (!hasBeeped.value) {
       hasBeeped.value = true
-      void beep()
+      void sounds.play('timer')
     }
     store.clearRoundTimer()
   }
@@ -99,7 +62,7 @@ const panelClass = computed(() => {
 })
 
 const unlockAudio = () => {
-  void ensureAudio()
+  sounds.unlock()
 }
 </script>
 

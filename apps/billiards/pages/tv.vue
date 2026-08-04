@@ -3,35 +3,27 @@ import { groupLabel, modeLabel, tournamentKindLabel } from '~/utils/labels'
 
 const store = useKolkhozStore()
 const config = useRuntimeConfig()
+const route = useRoute()
 const { hydrateTheme } = useClothTheme()
+const sync = useKolkhozSync()
 
 useHead({
   title: 'Табло · Колхоз'
 })
 
+const sounds = useGameSounds()
 const remainingLabel = ref('—:—')
 const timerStatus = ref<'idle' | 'running' | 'paused'>('idle')
+const roomInput = ref('')
+const joinBusy = ref(false)
 let timer: ReturnType<typeof setInterval> | null = null
-let audioCtx: AudioContext | null = null
+const hasBeeped = ref(false)
 
 const formatMs = (ms: number) => {
   const total = Math.max(0, Math.floor(ms / 1000))
   const m = Math.floor(total / 60)
   const s = total % 60
   return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`
-}
-
-const ensureAudio = async () => {
-  if (typeof window === 'undefined') return null
-  if (!audioCtx) audioCtx = new AudioContext()
-  if (audioCtx.state === 'suspended') {
-    try {
-      await audioCtx.resume()
-    } catch {
-      /* ignore */
-    }
-  }
-  return audioCtx
 }
 
 const tick = () => {
@@ -44,12 +36,17 @@ const tick = () => {
   if (!ends) {
     timerStatus.value = 'idle'
     remainingLabel.value = '—:—'
+    hasBeeped.value = false
     return
   }
   timerStatus.value = 'running'
   const left = Math.max(0, new Date(ends).getTime() - Date.now())
   remainingLabel.value = formatMs(left)
   if (left <= 0) {
+    if (!hasBeeped.value) {
+      hasBeeped.value = true
+      void sounds.play('timer')
+    }
     store.clearRoundTimer()
     timerStatus.value = 'idle'
     remainingLabel.value = '00:00'
@@ -57,24 +54,51 @@ const tick = () => {
 }
 
 const onStorage = (event: StorageEvent) => {
+  // Same-browser tabs fallback when remote room is not used.
+  if (sync.role.value === 'follower') return
   if (event.key === 'dautovtech_kolkhoz_v1') {
     store.hydrate()
     tick()
   }
 }
 
-onMounted(() => {
+const connectRoom = async (code: string) => {
+  joinBusy.value = true
+  try {
+    const ok = await sync.joinRoom(code)
+    if (ok) tick()
+  } finally {
+    joinBusy.value = false
+  }
+}
+
+onMounted(async () => {
   hydrateTheme()
+  sync.hydrateMeta()
   store.hydrate()
   tick()
   timer = setInterval(tick, 250)
   window.addEventListener('storage', onStorage)
+
+  const q = typeof route.query.room === 'string' ? route.query.room : ''
+  if (q) {
+    roomInput.value = q
+    await connectRoom(q)
+  } else if (sync.role.value === 'follower' && sync.roomCode.value) {
+    sync.startPolling()
+  }
 })
 
 onBeforeUnmount(() => {
   if (timer) clearInterval(timer)
   window.removeEventListener('storage', onStorage)
+  sync.stopPolling()
 })
+
+watch(
+  () => store.updatedAt,
+  () => tick()
+)
 
 const playersAt = (playerIds: string[]) =>
   playerIds
@@ -103,6 +127,7 @@ const backLabel = computed(() => {
 })
 
 const canControlTimer = computed(() => store.mode === 'tournament' && Boolean(store.currentRound))
+const isRemoteFollower = computed(() => sync.role.value === 'follower')
 
 const roundRateShort = computed(() => {
   const round = store.currentRound
@@ -111,7 +136,8 @@ const roundRateShort = computed(() => {
 })
 
 const startTimer = () => {
-  void ensureAudio()
+  sounds.unlock()
+  hasBeeped.value = false
   store.startRoundTimer()
   tick()
 }
@@ -122,18 +148,19 @@ const pauseTimer = () => {
 }
 
 const resumeTimer = () => {
-  void ensureAudio()
+  sounds.unlock()
   store.resumeRoundTimer()
   tick()
 }
 
 const stopTimer = () => {
   store.clearRoundTimer()
+  hasBeeped.value = false
   tick()
 }
 
 const toggleMute = () => {
-  void ensureAudio()
+  sounds.unlock()
   store.setTimerMuted(!store.tournament.timerMuted)
 }
 </script>
@@ -151,6 +178,37 @@ const toggleMute = () => {
           <template v-if="store.mode === 'tournament' && store.currentRound">
             · Тур {{ store.currentRound.number }}
           </template>
+          <template v-if="sync.roomCode.value">
+            · комната <span class="text-cloth-accent">{{ sync.roomCode.value }}</span>
+          </template>
+        </p>
+
+        <div
+          v-if="!isRemoteFollower && !sync.roomCode.value"
+          class="mt-4 flex max-w-md flex-wrap items-end gap-2 rounded-xl border border-[color:var(--cloth-border)] bg-[color:var(--cloth-card)] p-3"
+        >
+          <label class="min-w-[10rem] flex-1 text-xs text-cloth-muted">
+            Код комнаты с телефона
+            <input
+              v-model="roomInput"
+              class="field-input mt-1 w-full uppercase tracking-widest"
+              maxlength="8"
+              placeholder="ABC123"
+              @keyup.enter="connectRoom(roomInput)"
+            />
+          </label>
+          <button
+            type="button"
+            class="btn-primary text-sm"
+            :disabled="joinBusy"
+            @click="connectRoom(roomInput)"
+          >
+            Подключить
+          </button>
+          <p v-if="sync.syncError.value" class="w-full text-xs text-red-500">{{ sync.syncError.value }}</p>
+        </div>
+        <p v-else-if="isRemoteFollower" class="mt-3 text-sm text-cloth-accent">
+          Онлайн-синк · обновление ~1 с · rev {{ sync.revision.value }}
         </p>
         <div v-if="store.mode === 'tournament'" class="mt-3 grid gap-2 sm:max-w-3xl sm:grid-cols-2">
           <div
@@ -161,7 +219,6 @@ const toggleMute = () => {
             <p class="text-xs text-cloth-muted">формат групп 1-2-3</p>
           </div>
           <div
-            v-if="store.tournament.kind === 'organizer'"
             class="rounded-xl border border-[color:var(--cloth-border)] bg-[color:var(--cloth-card)] px-3 py-2 text-sm"
           >
             <p>
@@ -184,7 +241,7 @@ const toggleMute = () => {
         </p>
         <p class="font-display text-5xl font-bold tabular-nums text-cloth-accent sm:text-7xl">{{ remainingLabel }}</p>
 
-        <div v-if="canControlTimer" class="tv-timer-controls">
+        <div v-if="canControlTimer && !isRemoteFollower" class="tv-timer-controls">
           <button
             v-if="timerStatus === 'idle'"
             type="button"
@@ -237,12 +294,32 @@ const toggleMute = () => {
           >
             <h3 class="font-display text-2xl font-bold text-cloth-accent">{{ table.label }}</h3>
             <p class="mt-1 text-xs uppercase tracking-wider text-cloth-muted">номер в зале · {{ table.number }}</p>
+            <p
+              v-if="store.potByTableId(table.id)"
+              class="mt-3 rounded-xl border border-amber-400/40 bg-amber-500/15 px-3 py-2 text-lg"
+            >
+              Общак:
+              <strong class="font-display text-2xl text-cloth-accent">
+                {{ store.potByTableId(table.id)?.amount }}
+              </strong>
+              фиш.
+              <span class="mt-0.5 block text-sm text-cloth-muted">
+                ход круга:
+                {{
+                  store.players.find((p) => p.id === store.potByTableId(table.id)?.passCursorPlayerId)?.name || '—'
+                }}
+              </span>
+            </p>
             <ul class="mt-3 space-y-2">
               <li
                 v-for="player in playersAt(table.playerIds)"
                 :key="player.id"
                 class="flex items-center justify-between text-lg"
-                :class="player.status === 'eliminated' ? 'opacity-40 line-through' : ''"
+                :class="{
+                  'opacity-40 line-through': player.status === 'eliminated',
+                  'rounded-lg bg-amber-500/10 px-2':
+                    store.potByTableId(table.id)?.passCursorPlayerId === player.id
+                }"
               >
                 <span class="inline-flex items-center gap-2">
                   <PlayerAvatar :name="player.name" size="sm" />
@@ -292,7 +369,7 @@ const toggleMute = () => {
         </div>
 
         <div
-          v-if="store.mode === 'tournament' && store.tournament.kind === 'organizer'"
+          v-if="store.mode === 'tournament'"
           class="card-surface rounded-3xl p-5"
         >
           <h2 class="flex items-center gap-2 font-display text-2xl font-bold">
@@ -333,8 +410,13 @@ const toggleMute = () => {
         {{ backLabel }}
       </NuxtLink>
       <p class="max-w-md text-sm text-cloth-muted">
-        Табло можно использовать для управления таймером. Изменения сохраняются локально и подхватываются
-        другими вкладками этого браузера.
+        <template v-if="isRemoteFollower">
+          Табло подписано на комнату хоста. Счёт и столы обновляются автоматически.
+        </template>
+        <template v-else>
+          Локальный режим: изменения видны во вкладках этого браузера. Для другого устройства
+          откройте синк на пульте и введите код здесь.
+        </template>
       </p>
     </footer>
   </div>

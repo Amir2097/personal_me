@@ -3,6 +3,7 @@ const config = useRuntimeConfig()
 const store = useKolkhozStore()
 const { username, ready } = useHubAuth()
 const { theme, toggleTheme, hydrateTheme } = useClothTheme()
+const sounds = useGameSounds()
 
 const hubHref = computed(() => config.public.hubUrl || '/')
 const profileHref = computed(() => `${String(hubHref.value).replace(/\/$/, '')}/profile`)
@@ -13,6 +14,7 @@ const clientReady = ref(false)
 onMounted(() => {
   hydrateTheme()
   clientReady.value = true
+  sounds.unlock()
 })
 </script>
 
@@ -50,6 +52,15 @@ onMounted(() => {
           >
             не авторизован
           </span>
+          <button
+            type="button"
+            class="btn-ghost inline-flex items-center gap-1 py-1.5 text-xs"
+            :title="store.tournament.timerMuted ? 'Включить звуки' : 'Выключить звуки'"
+            @click="store.setTimerMuted(!store.tournament.timerMuted); sounds.unlock()"
+          >
+            <AppIcon :name="store.tournament.timerMuted ? 'volume-off' : 'volume'" size="sm" />
+            {{ store.tournament.timerMuted ? 'Звук выкл' : 'Звук' }}
+          </button>
           <button
             type="button"
             class="btn-ghost inline-flex items-center gap-1 py-1.5 text-xs"

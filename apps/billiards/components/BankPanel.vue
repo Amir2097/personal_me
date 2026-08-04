@@ -14,7 +14,7 @@ const money = (value: number) => `${value.toLocaleString('ru-RU')} ${currency.va
           <AppIcon name="chip" class="text-cloth-accent" /> Банк и призовые
         </h3>
         <p class="mt-1 text-xs text-cloth-muted">
-          Считаем взносы и докупы. В призовые уходит
+          Считаем докупы и доны. В призовые уходит
           {{ bank.prizePercent }}% банка.
         </p>
       </div>

@@ -4,12 +4,15 @@ import type { Player } from '~/types/kolkhoz'
 import { groupLabel } from '~/utils/labels'
 
 const store = useKolkhozStore()
+const sounds = useGameSounds()
+const fineAmount = computed(() => store.fineDefaultAmount())
 
 onMounted(() => {
   if (!store.mode) store.setMode('tournament')
   if (!store.tournament.tables.length && store.activePlayers.length) {
     store.reseat()
   }
+  sounds.unlock()
 })
 
 const isOrganizer = computed(() => store.tournament.kind === 'organizer')
@@ -53,6 +56,7 @@ const reseatAndKeepTimer = () => {
 }
 
 const startTimer = () => {
+  sounds.unlock()
   store.startRoundTimer()
 }
 
@@ -63,6 +67,38 @@ const roundRateShort = computed(() => {
 })
 
 const roundMetaLabel = computed(() => (isOrganizer.value ? 'разметка' : 'тарифы'))
+
+const potAt = (tableId: string) => store.potByTableId(tableId)
+
+const potCursorName = (tableId: string) => {
+  const pot = potAt(tableId)
+  if (!pot) return ''
+  return store.players.find((player) => player.id === pot.passCursorPlayerId)?.name || ''
+}
+
+const fineAt = (tableId: string, playerIds: string[], playerId: string) => {
+  try {
+    sounds.unlock()
+    store.placeFine(tableId, playerId, activeIdsAt(playerIds))
+  } catch (error) {
+    window.alert(error instanceof Error ? error.message : 'Не удалось выписать штраф')
+  }
+}
+
+const passMissAt = (tableId: string, playerId: string) => {
+  try {
+    sounds.unlock()
+    const returned = store.passPotMiss(tableId, playerId)
+    if (!returned) void sounds.play('miss')
+  } catch (error) {
+    window.alert(error instanceof Error ? error.message : 'Не удалось отметить мимо')
+  }
+}
+
+const returnPotAt = (tableId: string) => {
+  sounds.unlock()
+  store.returnPot(tableId)
+}
 </script>
 
 <template>
@@ -142,15 +178,19 @@ const roundMetaLabel = computed(() => (isOrganizer.value ? 'разметка' : 
       </div>
 
       <InfoCallout v-if="!isOrganizer" class="mt-5" title="Круг на столе" icon="chip">
-        «+ Шар» забирает фишки только у предыдущего в порядке списка.
-        «След. тур» меняет тарифы и заново перемешивает игроков.
+        «+ Шар» забирает фишки у предыдущего и общак, если он есть.
+        «Штраф» кладёт в общак фишки по ставке <strong class="text-cloth-chalk">группы 1</strong>
+        (макс. тариф тура), даже если оштрафован игрок другой группы.
+        Дальше по кругу — «Мимо»; без забития общак вернётся сам.
       </InfoCallout>
       <InfoCallout v-else class="mt-5" title="Организаторский режим" icon="clipboard">
         Пауза → убрать/вернуть → «Пересадить» → продолжить таймер.
         Докупы и доны пишите на карточке игрока — банк и призовые пересчитаются сами.
       </InfoCallout>
 
-      <BankPanel v-if="isOrganizer" class="mt-5" />
+      <BankPanel class="mt-5" />
+      <SyncPanel class="mt-5" />
+      <HistoryPanel class="mt-5" compact />
 
       <div class="mt-6 grid gap-4 lg:grid-cols-2">
         <section v-for="table in store.tournament.tables" :key="table.id" class="card-surface p-4">
@@ -161,18 +201,48 @@ const roundMetaLabel = computed(() => (isOrganizer.value ? 'разметка' : 
             {{ isOrganizer ? 'Состав' : 'Круг' }}: {{ orderLabel(table.playerIds) || '—' }}
           </p>
 
+          <div
+            v-if="!isOrganizer && potAt(table.id)"
+            class="mt-3 flex flex-wrap items-center justify-between gap-2 rounded-xl border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-sm"
+          >
+            <div>
+              <p>
+                Общак:
+                <strong class="text-cloth-accent">{{ potAt(table.id)?.amount }}</strong> фиш.
+              </p>
+              <p class="text-xs text-cloth-muted">
+                Ход круга:
+                <span class="text-cloth-accent">{{ potCursorName(table.id) }}</span>
+                · «+ Шар» забирает общак · «Мимо» двигает круг
+              </p>
+            </div>
+            <button type="button" class="btn-ghost py-1 text-xs" @click="returnPotAt(table.id)">
+              Вернуть сейчас
+            </button>
+          </div>
+
           <div class="mt-3 space-y-3">
             <article
               v-for="(player, index) in playersAt(table.playerIds)"
               :key="player.id"
               class="player-chip"
-              :class="player.status === 'eliminated' ? 'opacity-50' : ''"
+              :class="{
+                'opacity-50': player.status === 'eliminated',
+                'ring-1 ring-amber-400/60':
+                  !isOrganizer && potAt(table.id)?.passCursorPlayerId === player.id
+              }"
             >
               <PlayerAvatar :name="player.name" />
               <div class="min-w-0 flex-1">
                 <p class="font-semibold">
                   <span class="mr-1 text-xs text-cloth-muted">#{{ index + 1 }}</span>
                   {{ player.name }}
+                  <span
+                    v-if="!isOrganizer && potAt(table.id)?.passCursorPlayerId === player.id"
+                    class="ml-1 text-[10px] uppercase tracking-wide text-amber-300"
+                  >
+                    ход круга
+                  </span>
                 </p>
                 <p class="text-xs text-cloth-muted">
                   {{ groupLabel(player.category) }}
@@ -190,6 +260,22 @@ const roundMetaLabel = computed(() => (isOrganizer.value ? 'разметка' : 
                       @click="scoreAt(table.id, table.playerIds, player.id)"
                     >
                       <AppIcon name="ball" size="sm" /> + Шар
+                    </button>
+                    <button
+                      v-if="potAt(table.id)?.passCursorPlayerId === player.id"
+                      type="button"
+                      class="btn-ghost py-1.5 text-xs"
+                      @click="passMissAt(table.id, player.id)"
+                    >
+                      Мимо
+                    </button>
+                    <button
+                      type="button"
+                      class="btn-ghost py-1.5 text-xs"
+                      :title="`В общак ${fineAmount} фиш. (ставка группы 1)`"
+                      @click="fineAt(table.id, table.playerIds, player.id)"
+                    >
+                      Штраф · {{ fineAmount }}
                     </button>
                     <button type="button" class="btn-ghost py-1.5 text-xs" @click="store.dropout(table.id, player.id)">
                       Выбыл
@@ -209,7 +295,7 @@ const roundMetaLabel = computed(() => (isOrganizer.value ? 'разметка' : 
                     </button>
                   </template>
                 </div>
-                <PlayerBuyIn v-if="isOrganizer" :player-id="player.id" />
+                <PlayerBuyIn :player-id="player.id" />
               </div>
               <div class="text-right">
                 <p class="text-[10px] uppercase text-cloth-muted">
@@ -224,6 +310,9 @@ const roundMetaLabel = computed(() => (isOrganizer.value ? 'разметка' : 
                 />
                 <p v-else class="font-display text-2xl font-bold tabular-nums text-cloth-accent">
                   {{ player.balance }}
+                </p>
+                <p class="mt-0.5 text-[10px] text-cloth-muted">
+                  {{ store.playerPaidAmount(player.id).toLocaleString('ru-RU') }} ₽
                 </p>
               </div>
             </article>
@@ -280,7 +369,11 @@ const roundMetaLabel = computed(() => (isOrganizer.value ? 'разметка' : 
                 {{ store.players.find((p) => p.id === event.scorerId)?.name || event.scorerId }}
               </td>
               <td class="py-2 pr-3 text-cloth-accent">
-                {{ event.kind === 'dropout' ? 'выбывание' : event.note?.replace(/^vs\s+/, '') || '—' }}
+                <template v-if="event.kind === 'dropout'">выбывание</template>
+                <template v-else-if="event.kind === 'fine_place'">штраф → общак</template>
+                <template v-else-if="event.kind === 'fine_claim'">забрал общак</template>
+                <template v-else-if="event.kind === 'fine_return'">возврат общака</template>
+                <template v-else>{{ event.note?.replace(/^vs\s+/, '') || '—' }}</template>
               </td>
               <td class="py-2 text-xs">
                 <span
@@ -320,11 +413,9 @@ const roundMetaLabel = computed(() => (isOrganizer.value ? 'разметка' : 
             </span>
             <span class="tabular-nums font-semibold">
               {{ player.balance }}
-              <template v-if="isOrganizer">
-                <span class="ml-2 text-xs font-normal text-cloth-muted">
-                  {{ store.playerPaidAmount(player.id).toLocaleString('ru-RU') }} ₽
-                </span>
-              </template>
+              <span class="ml-2 text-xs font-normal text-cloth-muted">
+                {{ store.playerPaidAmount(player.id).toLocaleString('ru-RU') }} ₽
+              </span>
             </span>
           </li>
         </ol>

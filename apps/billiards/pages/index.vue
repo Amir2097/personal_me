@@ -67,8 +67,8 @@ const continueHref = computed(() => {
           Колхоз на зелёном сукне
         </h2>
         <p class="mt-4 max-w-2xl text-base leading-relaxed text-cloth-chalk/75">
-          Быстрый стол или турнир. В подробной игре считаем фишки за шары;
-          в организаторской — рассадка, туры и таймер без пошагового скоринга.
+          Быстрый стол или турнир. В подробной игре — скоринг шаров, банк и призовые;
+          в организаторской — рассадка, туры, таймер и банк без пошагового скоринга.
         </p>
         <ClientOnly>
           <p v-if="clientReady && username" class="mt-3 inline-flex items-center gap-2 text-sm text-cloth-accent">
@@ -80,6 +80,7 @@ const continueHref = computed(() => {
 
       <InfoCallout class="mt-6 max-w-3xl" title="Правило выплат (подробная игра)" icon="chip">
         Порядок сидения = круг. Игрок забирает фишки только у предыдущего.
+        Взносы и докупы копятся в банке; призовые — процент от банка.
         В организаторском режиме фишки — справочная разметка тура, без кнопок «+ Шар».
       </InfoCallout>
 
@@ -122,7 +123,7 @@ const continueHref = computed(() => {
                 <AppIcon name="chip" class="text-cloth-accent" /> Подробная игра
               </p>
               <p class="mt-1 text-xs text-cloth-muted">
-                Тарифы, «+ Шар», круговой зачёт фишек, выбывание — как раньше.
+                Тарифы, «+ Шар», банк, взносы/докупы и призовые.
               </p>
             </button>
             <button
@@ -134,7 +135,7 @@ const continueHref = computed(() => {
                 <AppIcon name="clipboard" class="text-cloth-accent" /> Организаторская
               </p>
               <p class="mt-1 text-xs text-cloth-muted">
-                Игроки, столы, туры, таймер с паузой и пересадкой. Фишки — разметка тура.
+                Игроки, столы, туры, таймер, банк. Фишки — разметка тура.
               </p>
             </button>
           </div>
@@ -170,6 +171,8 @@ const continueHref = computed(() => {
           </div>
         </div>
       </section>
+
+      <HistoryPanel class="mt-5" />
     </main>
   </div>
 </template>

@@ -20,6 +20,7 @@ import {
   sumMoney
 } from '~/utils/bank'
 import { applyDropout, processScore, undoEvent } from '~/utils/scoring'
+import { claimTablePot, passTablePotMiss, placeTableFine, potForTable, returnTablePot } from '~/utils/pot'
 import { movePlayerToTable, seatPlayers, ensureTableSlots } from '~/utils/seating'
 
 const STORAGE_KEY = 'dautovtech_kolkhoz_v1'
@@ -62,7 +63,8 @@ export const useKolkhozStore = defineStore('kolkhoz', {
       splitPrizes(
         calcPrizePool(sumMoney(state.tournament.buyIns), state.tournament.bank.prizePercent),
         state.tournament.bank.prizePlaces
-      )
+      ),
+    potByTableId: (state) => (tableId: string) => potForTable(state.tournament.pots, tableId)
   },
   actions: {
     hydrate() {
@@ -91,7 +93,7 @@ export const useKolkhozStore = defineStore('kolkhoz', {
       category?: PlayerCategory
       handicap?: number
       startingStack?: number
-      /** Organizer: record initial entry buy-in (money). Chips come from startingStack / entry chips. */
+      /** Tournament: record initial entry buy-in (money). Chips come from startingStack / entry chips. */
       entryMoney?: number
       entryChips?: number
     }) {
@@ -101,7 +103,7 @@ export const useKolkhozStore = defineStore('kolkhoz', {
       const chips =
         input.entryChips ??
         input.startingStack ??
-        (this.tournament.kind === 'organizer' ? this.tournament.bank.entryPreset.chips : 20)
+        this.tournament.bank.rebuyPreset.chips
       const player: Player = {
         id: uid(),
         name,
@@ -113,18 +115,17 @@ export const useKolkhozStore = defineStore('kolkhoz', {
       }
       this.players.push(player)
 
-      const money =
-        input.entryMoney ??
-        (this.tournament.kind === 'organizer' ? this.tournament.bank.entryPreset.money : 0)
-      if (this.tournament.kind === 'organizer' && money > 0) {
+      // Entry buy-in for both detailed and organizer tournament kinds.
+      const money = input.entryMoney ?? this.tournament.bank.rebuyPreset.money
+      if (this.mode === 'tournament' && money > 0) {
         this.tournament.buyIns.push({
           id: uid(),
           at: new Date().toISOString(),
           playerId: player.id,
-          kind: 'entry',
+          kind: 'rebuy',
           money,
           chips,
-          note: 'Стартовый взнос',
+          note: 'Стартовый докуп',
           roundNumber: this.currentRound?.number
         })
       }
@@ -151,6 +152,19 @@ export const useKolkhozStore = defineStore('kolkhoz', {
         playerIds: table.playerIds.filter((playerId) => playerId !== id)
       }))
       this.tournament.buyIns = this.tournament.buyIns.filter((item) => item.playerId !== id)
+      // Return open pot contributions if the only contributor left; otherwise drop their share from pots.
+      this.tournament.pots = this.tournament.pots
+        .map((pot) => {
+          const kept = pot.contributions.filter((part) => part.playerId !== id)
+          if (!kept.length) return null
+          return {
+            ...pot,
+            contributions: kept,
+            amount: kept.reduce((sum, part) => sum + part.amount, 0),
+            circlePlayerIds: pot.circlePlayerIds.filter((playerId) => playerId !== id)
+          }
+        })
+        .filter((pot): pot is NonNullable<typeof pot> => Boolean(pot))
       this.persist()
     },
     updateBank(patch: Partial<BankState>) {
@@ -291,6 +305,15 @@ export const useKolkhozStore = defineStore('kolkhoz', {
     advanceRound(index: number) {
       if (index < 0 || index >= this.tournament.rounds.length) return
       if (this.tournament.currentRoundIndex === index) return
+      // Detailed: open pots return before reseat (previous round circle is over).
+      if (this.isDetailedTournament) {
+        for (const pot of [...this.tournament.pots]) {
+          const result = returnTablePot(this.players, this.tournament.pots, pot.tableId)
+          this.players = result.players
+          this.tournament.pots = result.pots
+          if (result.event) this.events.push(result.event)
+        }
+      }
       this.tournament.currentRoundIndex = index
       this.tournament.roundEndsAt = null
       this.tournament.timerPausedRemainingMs = null
@@ -346,7 +369,77 @@ export const useKolkhozStore = defineStore('kolkhoz', {
       })
       this.players = result.players
       this.events.push(result.event)
+
+      // Next scorer also takes open fine pot (общак) on this table.
+      const claim = claimTablePot(this.players, this.tournament.pots, tableId, scorerId)
+      this.players = claim.players
+      this.tournament.pots = claim.pots
+      if (claim.event) {
+        this.events.push(claim.event)
+        result.event.note = `${result.event.note || ''} + общак ${claim.claimed}`.trim()
+      }
       this.persist()
+    },
+    /**
+     * Player puts chips into table pot (штраф → общак). Detailed tournament only.
+     * Default amount = round tariff of group 1 (max stake), regardless of offender's group.
+     */
+    placeFine(tableId: string, playerId: string, tablePlayerIds: string[], amount?: number) {
+      if (!this.isDetailedTournament) {
+        throw new Error('Fines are only available in detailed tournament mode.')
+      }
+      const player = this.players.find((item) => item.id === playerId)
+      if (!player) return
+      const tariff = this.currentRound?.tariffs[1] ?? 0
+      const chips = amount ?? tariff
+      const result = placeTableFine(
+        this.players,
+        this.tournament.pots,
+        tableId,
+        tablePlayerIds,
+        playerId,
+        chips
+      )
+      this.players = result.players
+      this.tournament.pots = result.pots
+      this.events.push(result.event)
+      this.persist()
+    },
+    /** Group-1 tariff for the current round (default fine / max stake). */
+    fineDefaultAmount() {
+      return this.currentRound?.tariffs[1] ?? 0
+    },
+    /** Claim open pot without ball scoring (detailed helper / rare manual path). */
+    claimPot(tableId: string, scorerId: string) {
+      if (!this.isDetailedTournament) {
+        throw new Error('Pot claim is only available in detailed tournament mode.')
+      }
+      const result = claimTablePot(this.players, this.tournament.pots, tableId, scorerId)
+      if (!result.event) return
+      this.players = result.players
+      this.tournament.pots = result.pots
+      this.events.push(result.event)
+      this.persist()
+    },
+    /** Circle ended with no score — return pot to contributors. Detailed only. */
+    returnPot(tableId: string) {
+      if (!this.isDetailedTournament) return
+      const result = returnTablePot(this.players, this.tournament.pots, tableId)
+      if (!result.event) return
+      this.players = result.players
+      this.tournament.pots = result.pots
+      this.events.push(result.event)
+      this.persist()
+    },
+    /** Mark «мимо» for pass cursor; auto-returns pot when the circle completes. */
+    passPotMiss(tableId: string, playerId: string) {
+      if (!this.isDetailedTournament) return false
+      const result = passTablePotMiss(this.players, this.tournament.pots, tableId, playerId)
+      this.players = result.players
+      this.tournament.pots = result.pots
+      if (result.event) this.events.push(result.event)
+      this.persist()
+      return Boolean(result.event)
     },
     dropout(tableId: string, playerId: string) {
       const result = applyDropout(this.players, playerId, tableId)
@@ -363,7 +456,47 @@ export const useKolkhozStore = defineStore('kolkhoz', {
     undoLast() {
       const event = this.events.pop()
       if (!event) return
-      this.players = undoEvent(this.players, event)
+
+      if (event.kind === 'fine_place') {
+        this.players = undoEvent(this.players, event)
+        const pot = potForTable(this.tournament.pots, event.tableId)
+        if (pot) {
+          const amount = event.potAmount || 0
+          const nextContrib = [...pot.contributions]
+          const last = nextContrib[nextContrib.length - 1]
+          if (last && last.playerId === event.scorerId && last.amount === amount) {
+            nextContrib.pop()
+          } else {
+            const idx = nextContrib.findIndex(
+              (part) => part.playerId === event.scorerId && part.amount === amount
+            )
+            if (idx >= 0) nextContrib.splice(idx, 1)
+          }
+          if (!nextContrib.length) {
+            this.tournament.pots = this.tournament.pots.filter((item) => item.tableId !== event.tableId)
+          } else {
+            this.tournament.pots = this.tournament.pots.map((item) =>
+              item.tableId === event.tableId
+                ? {
+                    ...item,
+                    contributions: nextContrib,
+                    amount: nextContrib.reduce((sum, part) => sum + part.amount, 0)
+                  }
+                : item
+            )
+          }
+        }
+      } else if (event.kind === 'fine_claim' || event.kind === 'fine_return') {
+        this.players = undoEvent(this.players, event)
+        if (event.potSnapshot) {
+          this.tournament.pots = [
+            ...this.tournament.pots.filter((item) => item.tableId !== event.tableId),
+            event.potSnapshot
+          ]
+        }
+      } else {
+        this.players = undoEvent(this.players, event)
+      }
       this.persist()
     },
     exportJson() {

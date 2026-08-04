@@ -19,26 +19,22 @@ const isOrganizer = computed(() => store.tournament.kind === 'organizer')
 
 const syncEntryDefaults = () => {
   const bank = store.tournament.bank
-  stack.value = bank.entryPreset.chips
-  entryMoney.value = bank.entryPreset.money
+  stack.value = bank.rebuyPreset.chips
+  entryMoney.value = bank.rebuyPreset.money
 }
 
 const setKind = (kind: TournamentKind) => {
   store.setTournamentKind(kind)
-  if (kind === 'organizer') syncEntryDefaults()
+  syncEntryDefaults()
 }
 
 const add = () => {
-  if (isOrganizer.value) {
-    store.addPlayer({
-      name: name.value,
-      category: category.value,
-      entryChips: stack.value,
-      entryMoney: entryMoney.value
-    })
-  } else {
-    store.addPlayer({ name: name.value, category: category.value, startingStack: stack.value })
-  }
+  store.addPlayer({
+    name: name.value,
+    category: category.value,
+    entryChips: stack.value,
+    entryMoney: entryMoney.value
+  })
   name.value = ''
 }
 
@@ -117,7 +113,7 @@ const startPlay = () => {
           <p class="flex items-center gap-2 font-semibold">
             <AppIcon name="chip" class="text-cloth-accent" /> Подробная игра
           </p>
-          <p class="mt-1 text-xs text-cloth-muted">Скоринг шаров и фишек за столом.</p>
+          <p class="mt-1 text-xs text-cloth-muted">Скоринг шаров, банк, взносы и призовые.</p>
           <span v-if="!isOrganizer" class="mode-option__badge">Выбрано</span>
         </button>
         <button
@@ -129,7 +125,7 @@ const startPlay = () => {
           <p class="flex items-center gap-2 font-semibold">
             <AppIcon name="clipboard" class="text-cloth-accent" /> Организаторская
           </p>
-          <p class="mt-1 text-xs text-cloth-muted">Рассадка, туры, таймер — без кнопок шаров.</p>
+          <p class="mt-1 text-xs text-cloth-muted">Рассадка, туры, таймер, банк — без кнопок шаров.</p>
           <span v-if="isOrganizer" class="mode-option__badge">Выбрано</span>
         </button>
       </section>
@@ -138,15 +134,16 @@ const startPlay = () => {
         На каждом столе порядок игроков в списке — круг сидения.
         Забил шар → фишки только у <strong class="text-cloth-chalk">предыдущего</strong> в круге.
         Сумма = тариф тура по группе того, у кого забирают.
+        Взносы и докупы идут в банк; призовые — процент от банка (обычно 80%).
       </InfoCallout>
       <InfoCallout v-else class="mt-5" title="Пульт организатора" icon="clipboard">
         Соберите игроков и столы, задайте длительность туров. При добавлении игрока сразу
         учитывается взнос в банк. Докупы и доны можно писать на пульте. Призовые — обычно 80% банка.
       </InfoCallout>
 
-      <section v-if="isOrganizer" class="mt-6">
+      <section class="mt-6">
         <BankPanel>
-          <div class="mt-5 grid gap-3 border-t border-[color:var(--cloth-border)] pt-4 sm:grid-cols-2 lg:grid-cols-4">
+          <div class="mt-5 grid gap-3 border-t border-[color:var(--cloth-border)] pt-4 sm:grid-cols-2 lg:grid-cols-3">
             <label class="text-xs text-cloth-muted">
               % призовых
               <input
@@ -159,25 +156,6 @@ const startPlay = () => {
               />
             </label>
             <label class="text-xs text-cloth-muted">
-              Взнос: ₽ / фишки
-              <span class="mt-1 flex gap-1">
-                <input
-                  :value="store.tournament.bank.entryPreset.money"
-                  type="number"
-                  min="0"
-                  class="field-input w-full"
-                  @change="store.updateBank({ entryPreset: { money: Number(($event.target as HTMLInputElement).value), chips: store.tournament.bank.entryPreset.chips } }); syncEntryDefaults()"
-                />
-                <input
-                  :value="store.tournament.bank.entryPreset.chips"
-                  type="number"
-                  min="0"
-                  class="field-input w-full"
-                  @change="store.updateBank({ entryPreset: { money: store.tournament.bank.entryPreset.money, chips: Number(($event.target as HTMLInputElement).value) } }); syncEntryDefaults()"
-                />
-              </span>
-            </label>
-            <label class="text-xs text-cloth-muted">
               Докуп: ₽ / фишки
               <span class="mt-1 flex gap-1">
                 <input
@@ -185,14 +163,14 @@ const startPlay = () => {
                   type="number"
                   min="0"
                   class="field-input w-full"
-                  @change="store.updateBank({ rebuyPreset: { money: Number(($event.target as HTMLInputElement).value), chips: store.tournament.bank.rebuyPreset.chips } })"
+                  @change="store.updateBank({ rebuyPreset: { money: Number(($event.target as HTMLInputElement).value), chips: store.tournament.bank.rebuyPreset.chips } }); syncEntryDefaults()"
                 />
                 <input
                   :value="store.tournament.bank.rebuyPreset.chips"
                   type="number"
                   min="0"
                   class="field-input w-full"
-                  @change="store.updateBank({ rebuyPreset: { money: store.tournament.bank.rebuyPreset.money, chips: Number(($event.target as HTMLInputElement).value) } })"
+                  @change="store.updateBank({ rebuyPreset: { money: store.tournament.bank.rebuyPreset.money, chips: Number(($event.target as HTMLInputElement).value) } }); syncEntryDefaults()"
                 />
               </span>
             </label>
@@ -241,8 +219,11 @@ const startPlay = () => {
           <AppIcon name="users" class="text-cloth-accent" /> Игроки
         </h3>
         <p class="mt-1 text-xs text-cloth-muted">
-          {{ isOrganizer ? 'Группа и фишки — для разметки тура. Докупы и доны можно писать прямо здесь, в любой момент.' : 'Группа влияет на тариф при забитии.' }}
-          По умолчанию 20 фишек.
+          {{
+            isOrganizer
+              ? 'Группа и фишки — для разметки тура. Докупы и доны можно писать прямо здесь.'
+              : 'Группа влияет на тариф при забитии. Докупы и доны идут в банк.'
+          }}
         </p>
 
         <form class="mt-4 grid gap-3 sm:grid-cols-4" @submit.prevent="add">
@@ -257,22 +238,20 @@ const startPlay = () => {
             type="number"
             min="0"
             class="field-input"
-            :title="isOrganizer ? 'Фишки за взнос' : 'Фишки'"
-            :placeholder="isOrganizer ? 'Фишки' : 'Фишки'"
+            title="Фишки за взнос"
+            placeholder="Фишки"
           />
           <input
-            v-if="isOrganizer"
             v-model.number="entryMoney"
             type="number"
             min="0"
             class="field-input sm:col-span-2"
-            placeholder="Взнос, ₽"
-            title="Стартовый взнос в банк"
+            placeholder="Докуп, ₽"
+            title="Стартовый докуп в банк"
           />
           <button
             type="submit"
-            class="btn-primary inline-flex items-center justify-center gap-2"
-            :class="isOrganizer ? 'sm:col-span-2' : 'sm:col-span-4'"
+            class="btn-primary inline-flex items-center justify-center gap-2 sm:col-span-2"
           >
             <AppIcon name="users" size="sm" /> Добавить
           </button>
@@ -282,8 +261,7 @@ const startPlay = () => {
           <li
             v-for="player in store.players"
             :key="player.id"
-            class="player-chip"
-            :class="isOrganizer ? '!items-start' : ''"
+            class="player-chip !items-start"
           >
             <PlayerAvatar :name="player.name" />
             <div class="min-w-0 flex-1">
@@ -292,9 +270,7 @@ const startPlay = () => {
                   <p class="truncate font-semibold">{{ player.name }}</p>
                   <p class="text-[10px] text-cloth-muted">
                     {{ player.balance }} фишек · {{ statusLabel(player.status) }}
-                    <template v-if="isOrganizer">
-                      · внёс {{ store.playerPaidAmount(player.id).toLocaleString('ru-RU') }} ₽
-                    </template>
+                    · внёс {{ store.playerPaidAmount(player.id).toLocaleString('ru-RU') }} ₽
                   </p>
                 </div>
                 <button type="button" class="btn-ghost shrink-0 py-1 text-xs" @click="store.removePlayer(player.id)">
@@ -318,7 +294,7 @@ const startPlay = () => {
                   {{ groupLabel(cat, true) }}
                 </button>
               </div>
-              <PlayerBuyIn v-if="isOrganizer" :player-id="player.id" />
+              <PlayerBuyIn :player-id="player.id" />
             </div>
           </li>
         </ul>

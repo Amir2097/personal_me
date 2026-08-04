@@ -17,6 +17,8 @@ from app.models.password_reset_token import PasswordResetToken  # noqa: F401
 from app.models.refresh_token import RefreshToken  # noqa: F401
 from app.models.sso_code import SsoCode  # noqa: F401
 from app.models.user import User  # noqa: F401
+from app.models.kolkhoz_session import KolkhozSession  # noqa: F401
+from app.models.kolkhoz_game import KolkhozGame  # noqa: F401
 
 config = context.config
 

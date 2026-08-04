@@ -39,6 +39,14 @@ export type TableSeat = {
   playerIds: string[]
 }
 
+export type ScoreEventKind =
+  | 'score'
+  | 'penalty'
+  | 'dropout'
+  | 'fine_place'
+  | 'fine_claim'
+  | 'fine_return'
+
 export type ScoreEvent = {
   id: string
   at: string
@@ -48,8 +56,31 @@ export type ScoreEvent = {
   ballId: string
   /** Delta per player id (positive = received). */
   deltas: Record<string, number>
-  kind: 'score' | 'penalty' | 'dropout'
+  kind: ScoreEventKind
   note?: string
+  /** Chips moved via table pot (общак). */
+  potAmount?: number
+  /** Snapshot of pot before claim/return (for undo). */
+  potSnapshot?: TablePot
+}
+
+export type TablePotContribution = {
+  playerId: string
+  amount: number
+}
+
+/** Open fine pot on a table — chips sit in общак until claimed or returned. */
+export type TablePot = {
+  id: string
+  tableId: string
+  amount: number
+  contributions: TablePotContribution[]
+  circlePlayerIds: string[]
+  createdAt: string
+  /** Circle completes when pass cursor returns to this player without a score. */
+  returnAtPlayerId: string
+  /** Whose «мимо» is expected next for auto-return. */
+  passCursorPlayerId: string
 }
 
 export type BuyInPreset = {
@@ -96,6 +127,8 @@ export type TournamentState = {
   timerMuted: boolean
   bank: BankState
   buyIns: BuyInRecord[]
+  /** Open fine pots (общак) per table. */
+  pots: TablePot[]
 }
 
 export type CasualState = {
@@ -159,7 +192,8 @@ export const createEmptyState = (): KolkhozState => ({
     timerPausedRemainingMs: null,
     timerMuted: false,
     bank: { ...DEFAULT_BANK, entryPreset: { ...DEFAULT_BANK.entryPreset }, rebuyPreset: { ...DEFAULT_BANK.rebuyPreset }, addonPreset: { ...DEFAULT_BANK.addonPreset }, prizePlaces: DEFAULT_BANK.prizePlaces.map((p) => ({ ...p })) },
-    buyIns: []
+    buyIns: [],
+    pots: []
   },
   casual: {
     balls: DEFAULT_CASUAL_BALLS.map((ball) => ({ ...ball })),
@@ -192,6 +226,27 @@ export const normalizeState = (parsed: Partial<KolkhozState>): KolkhozState => {
     rounds: parsed.tournament?.rounds?.length ? parsed.tournament.rounds : base.tournament.rounds,
     bank,
     buyIns: Array.isArray(parsed.tournament?.buyIns) ? parsed.tournament!.buyIns : [],
+    pots: (Array.isArray(parsed.tournament?.pots) ? parsed.tournament!.pots : []).map((raw) => {
+      const pot = raw as TablePot
+      const contributions = Array.isArray(pot.contributions)
+        ? pot.contributions.map((item) => ({ ...item }))
+        : []
+      const circlePlayerIds = pot.circlePlayerIds?.length
+        ? [...pot.circlePlayerIds]
+        : contributions.map((item) => item.playerId)
+      const returnAtPlayerId = pot.returnAtPlayerId || contributions[0]?.playerId || ''
+      const passCursorPlayerId = pot.passCursorPlayerId || circlePlayerIds.find((id) => id !== returnAtPlayerId) || returnAtPlayerId
+      return {
+        id: pot.id,
+        tableId: pot.tableId,
+        amount: Number(pot.amount) || 0,
+        contributions,
+        circlePlayerIds,
+        createdAt: pot.createdAt || new Date().toISOString(),
+        returnAtPlayerId,
+        passCursorPlayerId
+      } satisfies TablePot
+    }),
     tables: (parsed.tournament?.tables || []).map((table, index) => ({
       id: table.id,
       number: typeof table.number === 'number' && table.number > 0 ? table.number : index + 1,

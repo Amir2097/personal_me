@@ -50,6 +50,9 @@ const orderLabel = computed(() =>
         </div>
       </div>
 
+      <SyncPanel class="mt-5" />
+      <HistoryPanel class="mt-5" compact />
+
       <InfoCallout class="mt-5" title="Как считаются фишки" icon="chip">
         Игроки идут по кругу в порядке добавления:
         <span class="text-cloth-chalk">{{ orderLabel || '—' }}</span>.

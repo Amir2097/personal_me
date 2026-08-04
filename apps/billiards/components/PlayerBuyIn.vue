@@ -26,8 +26,8 @@ const history = computed(() =>
 )
 
 const presetFor = (next: BuyInKind) => {
-  if (next === 'entry') return bank.value.entryPreset
   if (next === 'addon') return bank.value.addonPreset
+  // entry and rebuy share the same practical meaning in UI — use rebuy preset.
   return bank.value.rebuyPreset
 }
 
@@ -65,9 +65,6 @@ const submit = () => {
       <button type="button" class="btn-ghost py-1 text-[11px]" @click="openForm('addon')">
         + Дон
       </button>
-      <button type="button" class="btn-ghost py-1 text-[11px]" @click="openForm('entry')">
-        + Взнос
-      </button>
     </div>
 
     <div v-if="formOpen" class="rounded-lg border border-[color:var(--cloth-border)] bg-[color:var(--cloth-input)] p-2">
@@ -95,13 +92,18 @@ const submit = () => {
       <li
         v-for="item in history.slice(0, historyLimit)"
         :key="item.id"
-        class="flex items-center justify-between gap-2"
+        class="flex items-start gap-2"
       >
-        <span>
+        <span class="min-w-0 flex-1">
           {{ buyInKindLabel(item.kind) }} · {{ item.money }} {{ currency }} / {{ item.chips }} фиш.
           <span v-if="item.roundNumber">· тур {{ item.roundNumber }}</span>
         </span>
-        <button type="button" class="text-red-500 hover:underline" @click="store.removeBuyIn(item.id)">
+        <button
+          type="button"
+          class="shrink-0 px-1 text-red-500 hover:underline"
+          title="Удалить запись"
+          @click="store.removeBuyIn(item.id)"
+        >
           ×
         </button>
       </li>
