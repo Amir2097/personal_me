@@ -30,19 +30,29 @@ const syncSession = async () => {
   }
 }
 
-onMounted(() => {
-  void syncSession()
+onMounted(async () => {
+  await syncSession()
+  // Billiards bounced here with ?auth=required. If hub session is already OK,
+  // clear the flag so it doesn't feel like an endless re-login loop.
+  if (route.query.auth === 'required' && auth.isAuthenticated) {
+    openError.value =
+      'Сессия на хабе активна. Нажмите «открыть» ещё раз — Kolkhoz подхватит вход через SSO.'
+    await clearAuthQuery()
+  } else if (route.query.auth === 'required' && !auth.isAuthenticated) {
+    showLogin.value = true
+    openError.value = 'Для Kolkhoz Manager нужна авторизация.'
+  }
 })
 
 watch(
   () => route.query.auth,
   (value) => {
+    if (!sessionChecked.value) return
     if (value === 'required' && !auth.isAuthenticated) {
       showLogin.value = true
       openError.value = 'Для Kolkhoz Manager нужна авторизация.'
     }
-  },
-  { immediate: true }
+  }
 )
 
 const clearAuthQuery = async () => {

@@ -39,13 +39,13 @@ const orderLabel = computed(() =>
         </div>
         <div class="flex flex-wrap gap-2">
           <button type="button" class="btn-ghost inline-flex items-center gap-1.5 text-sm" :disabled="!store.events.length" @click="store.undoLast()">
-            <AppIcon name="undo" size="sm" /> Undo
+            <AppIcon name="undo" size="sm" /> Отмена
           </button>
           <NuxtLink to="/casual" class="btn-ghost inline-flex items-center gap-1.5 text-sm">
             <AppIcon name="settings" size="sm" /> Настройки
           </NuxtLink>
           <NuxtLink to="/tv" class="btn-ghost inline-flex items-center gap-1.5 text-sm">
-            <AppIcon name="tv" size="sm" /> TV
+            <AppIcon name="tv" size="sm" /> Табло
           </NuxtLink>
         </div>
       </div>
@@ -68,19 +68,19 @@ const orderLabel = computed(() =>
             #{{ index + 1 }}
           </div>
           <div class="flex items-start justify-between gap-2 pr-10">
-            <div>
-              <h3 class="flex items-center gap-2 font-display text-xl font-bold">
-                <span class="flex h-8 w-8 items-center justify-center rounded-full bg-cloth-accent/15 text-cloth-accent">
-                  <AppIcon name="users" size="sm" />
-                </span>
-                {{ player.name }}
-              </h3>
-              <p class="mt-1 text-xs text-cloth-muted">
-                фора x{{ player.handicap }}
-                <template v-if="previousOf(player.id)">
-                  · бьёт <span class="text-cloth-accent">{{ previousOf(player.id)?.name }}</span>
-                </template>
-              </p>
+            <div class="flex items-start gap-3">
+              <PlayerAvatar :name="player.name" />
+              <div>
+                <h3 class="font-display text-xl font-bold">
+                  {{ player.name }}
+                </h3>
+                <p class="mt-1 text-xs text-cloth-muted">
+                  фора x{{ player.handicap }}
+                  <template v-if="previousOf(player.id)">
+                    · бьёт <span class="text-cloth-accent">{{ previousOf(player.id)?.name }}</span>
+                  </template>
+                </p>
+              </div>
             </div>
             <div class="text-right">
               <p class="text-[10px] uppercase text-cloth-muted">фишки</p>

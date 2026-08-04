@@ -16,22 +16,43 @@ const shuffle = <T>(items: T[]): T[] => {
   return arr
 }
 
-/**
- * Balance categories across tables with 3–5 seats each when possible.
- * Prefer spreading strong (cat 1) players. Shuffle within categories so
- * each reseat (e.g. new round) produces a fresh mix.
- */
-export const seatPlayers = (players: Player[], tableCount: number): TableSeat[] => {
-  const active = players.filter((player) => player.status === 'active')
-  const count = Math.max(1, Math.min(tableCount, active.length || 1))
+export const tableLabel = (number: number) => `Стол №${number}`
 
-  const tables: TableSeat[] = Array.from({ length: count }, (_, index) => ({
-    id: uid(),
-    label: `Стол ${index + 1}`,
-    playerIds: []
+/** Create/resize table slots so numbers can be set before seating. */
+export const ensureTableSlots = (tableCount: number, existingTables: TableSeat[] = []): TableSeat[] => {
+  const count = Math.max(1, Math.min(12, tableCount))
+  return Array.from({ length: count }, (_, index) => {
+    const prev = existingTables[index]
+    const number = prev?.number && prev.number > 0 ? prev.number : index + 1
+    return {
+      id: prev?.id ?? uid(),
+      number,
+      label: tableLabel(number),
+      playerIds: prev?.playerIds ? [...prev.playerIds] : []
+    }
+  })
+}
+
+/**
+ * Жеребьёвка столов:
+ * 1) Только активные игроки.
+ * 2) Внутри каждой группы (1 → 2 → 3) список перемешивается случайно.
+ * 3) Игроки раскладываются по кругу по уже заданным столам (номера сохраняются).
+ * 4) Мягкая балансировка: со стола >5 мест перенос на стол <3.
+ */
+export const seatPlayers = (
+  players: Player[],
+  tableCount: number,
+  existingTables: TableSeat[] = []
+): TableSeat[] => {
+  const active = players.filter((player) => player.status === 'active')
+  // Keep the configured table count (and numbers), even if some tables stay empty.
+  const tables = ensureTableSlots(tableCount, existingTables).map((table) => ({
+    ...table,
+    playerIds: [] as string[]
   }))
 
-  if (!active.length) return tables
+  if (!active.length || !tables.length) return tables
 
   const byCategory: Record<PlayerCategory, Player[]> = { 1: [], 2: [], 3: [] }
   for (const player of active) {
@@ -47,7 +68,6 @@ export const seatPlayers = (players: Player[], tableCount: number): TableSeat[] 
     tables[index % tables.length]!.playerIds.push(player.id)
   })
 
-  // Soft rebalance: move from oversized (>5) to undersized (<3) when possible
   let guard = 0
   while (guard < 50) {
     guard += 1

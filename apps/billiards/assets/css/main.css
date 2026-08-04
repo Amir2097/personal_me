@@ -4,35 +4,414 @@
 @tailwind components;
 @tailwind utilities;
 
+html[data-theme='dark'] {
+  color-scheme: dark;
+  --cloth-deep: #0c1412;
+  --cloth-green: #1a4d3a;
+  --cloth-felt: #0f3d2e;
+  --cloth-accent: #c8a45c;
+  --cloth-chalk: #e8f0ea;
+  --cloth-muted: #b9c9c1;
+  --cloth-card: rgba(10, 18, 16, 0.88);
+  --cloth-border: rgba(255, 255, 255, 0.14);
+  --cloth-input: rgba(0, 0, 0, 0.42);
+  --cloth-glow-a: rgba(26, 77, 58, 0.55);
+  --cloth-glow-b: rgba(200, 164, 92, 0.12);
+  --cloth-header: rgba(8, 14, 12, 0.82);
+}
+
+:root,
+html[data-theme='light'] {
+  color-scheme: light;
+  --table-scroll: 0;
+  --cloth-deep: #d2e2d8;
+  --cloth-green: #a9c8b6;
+  --cloth-felt: #b5d3c2;
+  --cloth-accent: #8a6a28;
+  --cloth-chalk: #102019;
+  --cloth-muted: #2d4338;
+  --cloth-card: rgba(247, 250, 246, 0.94);
+  --cloth-border: rgba(19, 36, 28, 0.16);
+  --cloth-input: rgba(255, 255, 255, 0.94);
+  --cloth-glow-a: rgba(84, 132, 104, 0.32);
+  --cloth-glow-b: rgba(138, 106, 40, 0.14);
+  --cloth-header: rgba(247, 250, 246, 0.92);
+}
+
 html,
 body,
 #__nuxt {
   min-height: 100%;
   margin: 0;
-  background: #0c1412;
+  background: var(--cloth-deep);
 }
 
 body {
-  color: #e8f0ea;
+  color: var(--cloth-chalk);
   font-family: 'DM Sans', system-ui, sans-serif;
+  background: var(--cloth-deep);
+  transition: background 0.25s ease, color 0.25s ease;
+}
+
+.grunge-shell {
+  position: relative;
+  isolation: isolate;
+}
+
+/* Photoreal table scene — desktop */
+.grunge-shell::before {
+  content: '';
+  position: fixed;
+  inset: -6% 0;
+  z-index: 0;
+  pointer-events: none;
   background:
-    radial-gradient(ellipse at 20% 0%, rgba(26, 77, 58, 0.55), transparent 50%),
-    radial-gradient(ellipse at 90% 20%, rgba(200, 164, 92, 0.12), transparent 40%),
-    #0c1412;
+    linear-gradient(
+      180deg,
+      rgba(8, 14, 12, 0.62) 0%,
+      rgba(8, 14, 12, 0.48) 40%,
+      rgba(8, 14, 12, 0.72) 100%
+    ),
+    url('/billiards/bg/billiards-bg-desktop.png') center / cover no-repeat;
+  /* No CSS transition — lerp in JS keeps motion smooth */
+  transform: translate3d(0, calc(var(--table-scroll) * -0.035px), 0) scale(1.04);
+  will-change: transform;
+}
+
+/* Soft vignette + grain for readability */
+.grunge-shell::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(ellipse at 50% 28%, transparent 15%, rgba(0, 0, 0, 0.45) 100%),
+    repeating-radial-gradient(
+      circle at center,
+      rgba(255, 255, 255, 0.014) 0 1px,
+      transparent 1px 3px
+    );
+  opacity: 0.9;
+}
+
+@media (max-width: 768px) {
+  .grunge-shell::before {
+    background:
+      linear-gradient(
+        180deg,
+        rgba(8, 14, 12, 0.66) 0%,
+        rgba(8, 14, 12, 0.5) 40%,
+        rgba(8, 14, 12, 0.76) 100%
+      ),
+      url('/billiards/bg/billiards-bg-mobile.png') center / cover no-repeat;
+  }
+}
+
+html[data-theme='light'] .grunge-shell::before {
+  background:
+    linear-gradient(
+      180deg,
+      rgba(218, 232, 222, 0.5) 0%,
+      rgba(212, 228, 218, 0.4) 42%,
+      rgba(205, 221, 211, 0.56) 100%
+    ),
+    url('/billiards/bg/billiards-bg-desktop.png') center / cover no-repeat;
+}
+
+@media (max-width: 768px) {
+  html[data-theme='light'] .grunge-shell::before {
+    background:
+      linear-gradient(
+        180deg,
+        rgba(218, 232, 222, 0.52) 0%,
+        rgba(212, 228, 218, 0.42) 42%,
+        rgba(205, 221, 211, 0.58) 100%
+      ),
+      url('/billiards/bg/billiards-bg-mobile.png') center / cover no-repeat;
+  }
+}
+
+html[data-theme='light'] .grunge-shell::after {
+  background:
+    radial-gradient(ellipse at 50% 28%, transparent 30%, rgba(16, 32, 25, 0.22) 100%);
+  opacity: 1;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .grunge-shell::before {
+    transform: none;
+  }
+}
+
+.grunge-shell > * {
+  position: relative;
+  z-index: 1;
 }
 
 .btn-primary {
-  @apply rounded-lg bg-cloth-accent px-4 py-2 font-semibold text-cloth-deep transition hover:brightness-110 disabled:opacity-40;
+  @apply rounded-md px-4 py-2 font-semibold transition hover:brightness-110 disabled:opacity-40;
+  background: var(--cloth-accent);
+  color: var(--cloth-deep);
+  box-shadow:
+    inset 0 -2px 0 rgba(0, 0, 0, 0.25),
+    0 5px 14px rgba(0, 0, 0, 0.2);
+  border: 1px solid color-mix(in srgb, var(--cloth-accent) 60%, #2d2414);
+}
+
+html[data-theme='light'] .btn-primary {
+  color: #fff8e8;
 }
 
 .btn-ghost {
-  @apply rounded-lg border border-white/15 px-4 py-2 text-cloth-chalk transition hover:border-cloth-accent/60 hover:text-cloth-accent disabled:opacity-40;
+  @apply rounded-md px-4 py-2 transition disabled:opacity-40;
+  border: 1px solid var(--cloth-border);
+  color: var(--cloth-chalk);
+  background: var(--cloth-input);
 }
 
-.card-surface {
-  @apply rounded-2xl border border-white/10 bg-black/30 shadow-[0_8px_32px_rgba(0,0,0,0.25)] backdrop-blur-sm;
+.btn-ghost:hover {
+  border-color: color-mix(in srgb, var(--cloth-accent) 65%, transparent);
+  color: var(--cloth-accent);
+}
+
+.card-surface,
+.panel-surface {
+  @apply rounded-2xl backdrop-blur-md;
+  border: 1px solid var(--cloth-border);
+  background: var(--cloth-card);
+  color: var(--cloth-chalk);
+  box-shadow:
+    0 10px 28px rgba(0, 0, 0, 0.16),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.04);
+}
+
+.hero-surface {
+  border: 1px solid var(--cloth-border);
+  background: color-mix(in srgb, var(--cloth-card) 94%, transparent);
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.16);
+  backdrop-filter: blur(8px);
+}
+
+.panel-surface {
+  @apply rounded-xl;
+}
+
+.mode-option {
+  position: relative;
+  text-align: left;
+  transition:
+    border-color 0.18s ease,
+    box-shadow 0.18s ease,
+    background-color 0.18s ease;
+}
+
+.mode-option--active {
+  border-color: var(--cloth-accent) !important;
+  background:
+    linear-gradient(
+      135deg,
+      color-mix(in srgb, var(--cloth-accent) 18%, var(--cloth-card)),
+      var(--cloth-card) 55%
+    ) !important;
+  box-shadow:
+    0 0 0 2px color-mix(in srgb, var(--cloth-accent) 55%, transparent),
+    0 10px 24px rgba(0, 0, 0, 0.14);
+}
+
+.mode-option--active::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 10px;
+  bottom: 10px;
+  width: 4px;
+  border-radius: 0 4px 4px 0;
+  background: var(--cloth-accent);
+}
+
+.mode-option__badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  margin-top: 0.65rem;
+  padding: 0.2rem 0.55rem;
+  border-radius: 999px;
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #fff8e8;
+  background: var(--cloth-accent);
+}
+
+.field-input {
+  @apply rounded-lg px-3 py-2 outline-none transition;
+  border: 1px solid var(--cloth-border);
+  background: var(--cloth-input);
+  color: var(--cloth-chalk);
+}
+
+.field-input:focus {
+  border-color: color-mix(in srgb, var(--cloth-accent) 70%, transparent);
+}
+
+.info-callout {
+  border-color: color-mix(in srgb, var(--cloth-accent) 40%, transparent) !important;
+  background: var(--cloth-card) !important;
+  color: var(--cloth-chalk) !important;
+  box-shadow: 0 8px 22px rgba(0, 0, 0, 0.12);
+}
+
+.info-callout .text-cloth-muted {
+  color: var(--cloth-muted) !important;
 }
 
 .info-callout strong {
   font-weight: 600;
 }
+
+.text-cloth-accent {
+  color: var(--cloth-accent) !important;
+}
+
+.text-cloth-muted {
+  color: var(--cloth-muted) !important;
+}
+
+.text-cloth-chalk {
+  color: var(--cloth-chalk) !important;
+}
+
+/* Keep readability high even when Tailwind opacity variants are used. */
+.text-cloth-chalk\/70 {
+  color: color-mix(in srgb, var(--cloth-chalk) 88%, transparent) !important;
+}
+
+.text-cloth-chalk\/75 {
+  color: color-mix(in srgb, var(--cloth-chalk) 90%, transparent) !important;
+}
+
+.text-cloth-muted\/80 {
+  color: color-mix(in srgb, var(--cloth-muted) 94%, transparent) !important;
+}
+
+.tv-hero-panel {
+  border: 1px solid var(--cloth-border);
+  background: color-mix(in srgb, var(--cloth-card) 96%, transparent);
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.15);
+  backdrop-filter: blur(8px);
+}
+
+.hero-strip {
+  border: 1px solid var(--cloth-border);
+  background: color-mix(in srgb, var(--cloth-card) 95%, transparent);
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.14);
+  backdrop-filter: blur(8px);
+}
+
+.round-badge {
+  border: 1px solid color-mix(in srgb, var(--cloth-accent) 45%, transparent);
+  background: color-mix(in srgb, var(--cloth-card) 92%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--cloth-accent) 16%, transparent);
+}
+
+.bg-cloth-accent\/15 {
+  background: color-mix(in srgb, var(--cloth-accent) 15%, transparent) !important;
+}
+
+.bg-cloth-accent\/10 {
+  background: color-mix(in srgb, var(--cloth-accent) 10%, transparent) !important;
+}
+
+.bg-cloth-accent\/5 {
+  background: color-mix(in srgb, var(--cloth-accent) 5%, transparent) !important;
+}
+
+.border-cloth-accent\/35,
+.border-cloth-accent\/40,
+.border-cloth-accent\/50,
+.border-cloth-accent\/60 {
+  border-color: color-mix(in srgb, var(--cloth-accent) 45%, transparent) !important;
+}
+
+.app-header {
+  border-bottom: 1px solid var(--cloth-border);
+  background: var(--cloth-header);
+  backdrop-filter: blur(12px);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.1);
+}
+
+.player-chip {
+  @apply flex items-center gap-3 rounded-xl px-3 py-3 transition;
+  border: 1px solid var(--cloth-border);
+  background:
+    linear-gradient(160deg, color-mix(in srgb, var(--cloth-input) 85%, transparent), transparent 75%),
+    color-mix(in srgb, var(--cloth-input) 80%, transparent);
+}
+
+.player-chip:hover {
+  border-color: color-mix(in srgb, var(--cloth-accent) 40%, transparent);
+}
+
+/* Floating round timer — high contrast in both themes */
+.timer-panel {
+  @apply fixed bottom-4 right-4 z-40 rounded-2xl border px-4 py-3 shadow-2xl;
+}
+
+.timer-panel--running {
+  border-color: color-mix(in srgb, var(--cloth-accent) 55%, transparent);
+  background: color-mix(in srgb, var(--cloth-felt) 92%, var(--cloth-accent));
+  color: var(--cloth-chalk);
+}
+
+.timer-panel--paused {
+  border-color: #d97706;
+  background: #fff7ed;
+  color: #7c2d12;
+}
+
+html[data-theme='dark'] .timer-panel--paused {
+  border-color: rgba(251, 191, 36, 0.55);
+  background: rgba(69, 26, 3, 0.95);
+  color: #ffedd5;
+}
+
+.timer-panel--urgent {
+  border-color: #f87171;
+  background: #fef2f2;
+  color: #7f1d1d;
+}
+
+html[data-theme='dark'] .timer-panel--urgent {
+  border-color: rgba(248, 113, 113, 0.55);
+  background: rgba(69, 10, 10, 0.95);
+  color: #fee2e2;
+}
+
+.timer-panel__label {
+  @apply text-[10px] uppercase tracking-widest opacity-70;
+}
+
+.timer-panel__btn {
+  @apply inline-flex items-center gap-1 rounded-lg px-2.5 py-1 text-[11px] font-semibold transition;
+  border: 1px solid currentColor;
+  opacity: 0.92;
+  background: color-mix(in srgb, currentColor 12%, transparent);
+  color: inherit;
+}
+
+.timer-panel__btn:hover {
+  opacity: 1;
+  background: color-mix(in srgb, currentColor 22%, transparent);
+}
+
+.tv-timer-controls {
+  @apply mt-4 flex flex-wrap justify-end gap-2;
+}
+
+.tv-footer {
+  @apply mt-10 flex flex-col gap-4 border-t pt-6 sm:flex-row sm:items-center sm:justify-between;
+  border-color: var(--cloth-border);
+}
+

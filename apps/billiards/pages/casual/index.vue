@@ -5,7 +5,7 @@ const store = useKolkhozStore()
 const name = ref('')
 const category = ref<PlayerCategory>(2)
 const handicap = ref(1)
-const stack = ref(100)
+const stack = ref(20)
 
 onMounted(() => {
   if (!store.mode) store.setMode('casual')
@@ -79,22 +79,22 @@ const moveDown = (index: number) => {
         <form class="mt-4 grid gap-3 sm:grid-cols-2" @submit.prevent="add">
           <input
             v-model="name"
-            class="rounded-lg border border-white/15 bg-black/30 px-3 py-2 outline-none focus:border-cloth-accent"
+            class="field-input outline-none focus:border-cloth-accent"
             placeholder="Имя игрока"
             required
           />
-          <select v-model.number="category" class="rounded-lg border border-white/15 bg-black/30 px-3 py-2">
-            <option :value="1">Категория 1 (сильнее)</option>
-            <option :value="2">Категория 2</option>
-            <option :value="3">Категория 3</option>
+          <select v-model.number="category" class="field-input">
+            <option :value="1">Группа 1 (сильнее)</option>
+            <option :value="2">Группа 2</option>
+            <option :value="3">Группа 3</option>
           </select>
           <label class="text-sm">
             Фора (коэф.)
-            <input v-model.number="handicap" type="number" min="0.1" step="0.1" class="mt-1 w-full rounded-lg border border-white/15 bg-black/30 px-3 py-2" />
+            <input v-model.number="handicap" type="number" min="0.1" step="0.1" class="field-input mt-1 w-full" />
           </label>
           <label class="text-sm">
-            Стартовый стек
-            <input v-model.number="stack" type="number" min="0" class="mt-1 w-full rounded-lg border border-white/15 bg-black/30 px-3 py-2" />
+            Стартовые фишки
+            <input v-model.number="stack" type="number" min="0" class="field-input mt-1 w-full" />
           </label>
           <button type="submit" class="btn-primary sm:col-span-2">Добавить игрока</button>
         </form>
@@ -103,12 +103,15 @@ const moveDown = (index: number) => {
           <li
             v-for="(player, index) in store.players"
             :key="player.id"
-            class="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-white/10 bg-black/20 px-4 py-3"
+            class="player-chip"
           >
-            <div>
-              <span class="text-xs text-cloth-muted">#{{ index + 1 }}</span>
-              <span class="ml-2 font-semibold">{{ player.name }}</span>
-              <span class="ml-2 text-xs text-cloth-muted">x{{ player.handicap }} · {{ player.balance }} фишек</span>
+            <PlayerAvatar :name="player.name" />
+            <div class="min-w-0 flex-1">
+              <p class="font-semibold">
+                <span class="text-xs text-cloth-muted">#{{ index + 1 }}</span>
+                {{ player.name }}
+              </p>
+              <p class="text-xs text-cloth-muted">фора x{{ player.handicap }} · {{ player.balance }} фишек</p>
             </div>
             <div class="flex gap-1">
               <button type="button" class="btn-ghost px-2 py-1 text-xs" title="Выше в круге" @click="moveUp(index)">↑</button>
@@ -135,7 +138,7 @@ const moveDown = (index: number) => {
             type="number"
             min="0.1"
             step="0.5"
-            class="mt-1 w-32 rounded-lg border border-white/15 bg-black/30 px-3 py-2"
+            class="field-input mt-1 w-32"
             @change="onBaseUnitChange"
           />
         </label>

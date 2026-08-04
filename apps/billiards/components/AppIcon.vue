@@ -14,6 +14,11 @@ const props = withDefaults(
       | 'chip'
       | 'arrow'
       | 'play'
+      | 'user'
+      | 'pause'
+      | 'clipboard'
+      | 'sun'
+      | 'moon'
     size?: 'sm' | 'md' | 'lg'
   }>(),
   { size: 'md' }
@@ -94,6 +99,26 @@ const sizeClass = computed(() => {
     <template v-else-if="name === 'play'">
       <circle cx="12" cy="12" r="9" />
       <path d="m10 8 6 4-6 4V8Z" fill="currentColor" stroke="none" />
+    </template>
+    <template v-else-if="name === 'user'">
+      <circle cx="12" cy="8" r="4" />
+      <path d="M4 20a8 8 0 0 1 16 0" />
+    </template>
+    <template v-else-if="name === 'pause'">
+      <rect x="6" y="5" width="4" height="14" rx="1" />
+      <rect x="14" y="5" width="4" height="14" rx="1" />
+    </template>
+    <template v-else-if="name === 'clipboard'">
+      <rect x="6" y="4" width="12" height="16" rx="2" />
+      <path d="M9 4V3h6v1" />
+      <path d="M9 10h6M9 14h4" />
+    </template>
+    <template v-else-if="name === 'sun'">
+      <circle cx="12" cy="12" r="4" />
+      <path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4" />
+    </template>
+    <template v-else-if="name === 'moon'">
+      <path d="M21 14.5A8.5 8.5 0 0 1 9.5 3 7 7 0 1 0 21 14.5Z" />
     </template>
   </svg>
 </template>

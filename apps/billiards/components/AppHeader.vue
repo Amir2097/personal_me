@@ -1,37 +1,70 @@
 <script setup lang="ts">
 const config = useRuntimeConfig()
 const store = useKolkhozStore()
-const { username } = useHubAuth()
+const { username, ready } = useHubAuth()
+const { theme, toggleTheme, hydrateTheme } = useClothTheme()
 
 const hubHref = computed(() => config.public.hubUrl || '/')
+const profileHref = computed(() => `${String(hubHref.value).replace(/\/$/, '')}/profile`)
+
+// Auth/theme from browser only — keep SSR markup stable to avoid hydration mismatch.
+const clientReady = ref(false)
+
+onMounted(() => {
+  hydrateTheme()
+  clientReady.value = true
+})
 </script>
 
 <template>
-  <header class="border-b border-white/10 bg-black/20 backdrop-blur-sm">
+  <header class="app-header">
     <div class="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-3 px-4 py-4">
       <div class="flex items-center gap-3">
         <span class="flex h-10 w-10 items-center justify-center rounded-xl bg-cloth-accent/15 text-cloth-accent">
           <AppIcon name="cue" size="lg" />
         </span>
         <div>
-          <p class="text-xs uppercase tracking-[0.28em] text-cloth-muted">{{ config.public.brandName }} · hobby</p>
+          <p class="text-xs uppercase tracking-[0.28em] text-cloth-muted">{{ config.public.brandName }} · хобби</p>
           <h1 class="font-display text-xl font-bold text-cloth-chalk sm:text-2xl">
-            Billiards Kolkhoz
+            Бильярд · Колхоз
           </h1>
         </div>
       </div>
       <nav class="flex flex-wrap items-center gap-2 text-sm">
-        <span
-          v-if="username"
-          class="hidden rounded-md border border-white/10 px-2 py-1 text-[11px] text-cloth-muted sm:inline"
-        >
-          {{ username }}
-        </span>
+        <ClientOnly>
+          <a
+            v-if="clientReady && ready && username"
+            :href="profileHref"
+            class="inline-flex items-center gap-2 rounded-xl border border-cloth-accent/35 bg-cloth-accent/10 px-3 py-1.5 text-xs text-cloth-chalk transition hover:border-cloth-accent hover:bg-cloth-accent/20"
+            title="Профиль на хабе"
+          >
+            <PlayerAvatar :name="username" size="sm" />
+            <span class="min-w-0">
+              <span class="block text-[10px] uppercase tracking-wider text-cloth-muted">профиль</span>
+              <span class="block max-w-[9rem] truncate font-semibold text-cloth-accent">{{ username }}</span>
+            </span>
+          </a>
+          <span
+            v-else-if="clientReady && ready"
+            class="rounded-md border border-amber-400/30 px-2 py-1 text-[11px] text-amber-700"
+          >
+            не авторизован
+          </span>
+          <button
+            type="button"
+            class="btn-ghost inline-flex items-center gap-1 py-1.5 text-xs"
+            :title="theme === 'dark' ? 'Светлая тема' : 'Тёмная тема'"
+            @click="toggleTheme"
+          >
+            <AppIcon :name="theme === 'dark' ? 'sun' : 'moon'" size="sm" />
+            {{ theme === 'dark' ? 'Светлая' : 'Тёмная' }}
+          </button>
+        </ClientOnly>
         <NuxtLink to="/" class="btn-ghost inline-flex items-center gap-1 py-1.5 text-xs">
           <AppIcon name="play" size="sm" /> Режимы
         </NuxtLink>
         <NuxtLink to="/tv" class="btn-ghost inline-flex items-center gap-1 py-1.5 text-xs">
-          <AppIcon name="tv" size="sm" /> TV
+          <AppIcon name="tv" size="sm" /> Табло
         </NuxtLink>
         <a :href="hubHref" class="btn-ghost py-1.5 text-xs">← Хаб</a>
         <button
@@ -40,7 +73,7 @@ const hubHref = computed(() => config.public.hubUrl || '/')
           :disabled="!store.events.length"
           @click="store.undoLast()"
         >
-          <AppIcon name="undo" size="sm" /> Undo
+          <AppIcon name="undo" size="sm" /> Отмена
         </button>
       </nav>
     </div>

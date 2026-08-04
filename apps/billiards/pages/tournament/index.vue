@@ -1,18 +1,44 @@
 <script setup lang="ts">
-import type { Player, PlayerCategory } from '~/types/kolkhoz'
+import type { Player, PlayerCategory, TournamentKind } from '~/types/kolkhoz'
+import { groupHint, groupLabel, statusLabel } from '~/utils/labels'
 
 const store = useKolkhozStore()
 const name = ref('')
 const category = ref<PlayerCategory>(2)
-const stack = ref(100)
+const stack = ref(20)
+const entryMoney = ref(500)
 const categories = [1, 2, 3] as const
 
 onMounted(() => {
   if (!store.mode) store.setMode('tournament')
+  store.ensureTables()
+  syncEntryDefaults()
 })
 
+const isOrganizer = computed(() => store.tournament.kind === 'organizer')
+
+const syncEntryDefaults = () => {
+  const bank = store.tournament.bank
+  stack.value = bank.entryPreset.chips
+  entryMoney.value = bank.entryPreset.money
+}
+
+const setKind = (kind: TournamentKind) => {
+  store.setTournamentKind(kind)
+  if (kind === 'organizer') syncEntryDefaults()
+}
+
 const add = () => {
-  store.addPlayer({ name: name.value, category: category.value, startingStack: stack.value })
+  if (isOrganizer.value) {
+    store.addPlayer({
+      name: name.value,
+      category: category.value,
+      entryChips: stack.value,
+      entryMoney: entryMoney.value
+    })
+  } else {
+    store.addPlayer({ name: name.value, category: category.value, startingStack: stack.value })
+  }
   name.value = ''
 }
 
@@ -59,8 +85,15 @@ const onMovePlayer = (playerId: string, event: Event) => {
   store.movePlayer(playerId, (event.target as HTMLSelectElement).value)
 }
 
+const onTableNumberChange = (tableId: string, event: Event) => {
+  store.setTableNumber(tableId, Number((event.target as HTMLInputElement).value))
+}
+
 const startPlay = () => {
-  if (!store.tournament.tables.length) store.reseat()
+  store.ensureTables()
+  if (!store.tournament.tables.some((t) => t.playerIds.length) && store.activePlayers.length >= 2) {
+    store.reseat()
+  }
   navigateTo('/tournament/play')
 }
 </script>
@@ -74,38 +107,173 @@ const startPlay = () => {
       </p>
       <h2 class="mt-1 font-display text-2xl font-bold">Настройка</h2>
 
-      <InfoCallout class="mt-5" title="Как работает выплата" icon="chip">
+      <section class="mt-5 grid gap-3 sm:grid-cols-2">
+        <button
+          type="button"
+          class="panel-surface mode-option p-4"
+          :class="{ 'mode-option--active': !isOrganizer }"
+          @click="setKind('detailed')"
+        >
+          <p class="flex items-center gap-2 font-semibold">
+            <AppIcon name="chip" class="text-cloth-accent" /> Подробная игра
+          </p>
+          <p class="mt-1 text-xs text-cloth-muted">Скоринг шаров и фишек за столом.</p>
+          <span v-if="!isOrganizer" class="mode-option__badge">Выбрано</span>
+        </button>
+        <button
+          type="button"
+          class="panel-surface mode-option p-4"
+          :class="{ 'mode-option--active': isOrganizer }"
+          @click="setKind('organizer')"
+        >
+          <p class="flex items-center gap-2 font-semibold">
+            <AppIcon name="clipboard" class="text-cloth-accent" /> Организаторская
+          </p>
+          <p class="mt-1 text-xs text-cloth-muted">Рассадка, туры, таймер — без кнопок шаров.</p>
+          <span v-if="isOrganizer" class="mode-option__badge">Выбрано</span>
+        </button>
+      </section>
+
+      <InfoCallout v-if="!isOrganizer" class="mt-5" title="Как работает выплата" icon="chip">
         На каждом столе порядок игроков в списке — круг сидения.
         Забил шар → фишки только у <strong class="text-cloth-chalk">предыдущего</strong> в круге.
-        Сумма = тариф тура по категории того, у кого забирают (не у всех сразу).
+        Сумма = тариф тура по группе того, у кого забирают.
       </InfoCallout>
+      <InfoCallout v-else class="mt-5" title="Пульт организатора" icon="clipboard">
+        Соберите игроков и столы, задайте длительность туров. При добавлении игрока сразу
+        учитывается взнос в банк. Докупы и доны можно писать на пульте. Призовые — обычно 80% банка.
+      </InfoCallout>
+
+      <section v-if="isOrganizer" class="mt-6">
+        <BankPanel>
+          <div class="mt-5 grid gap-3 border-t border-[color:var(--cloth-border)] pt-4 sm:grid-cols-2 lg:grid-cols-4">
+            <label class="text-xs text-cloth-muted">
+              % призовых
+              <input
+                :value="store.tournament.bank.prizePercent"
+                type="number"
+                min="0"
+                max="100"
+                class="field-input mt-1 w-full"
+                @change="store.updateBank({ prizePercent: Number(($event.target as HTMLInputElement).value) })"
+              />
+            </label>
+            <label class="text-xs text-cloth-muted">
+              Взнос: ₽ / фишки
+              <span class="mt-1 flex gap-1">
+                <input
+                  :value="store.tournament.bank.entryPreset.money"
+                  type="number"
+                  min="0"
+                  class="field-input w-full"
+                  @change="store.updateBank({ entryPreset: { money: Number(($event.target as HTMLInputElement).value), chips: store.tournament.bank.entryPreset.chips } }); syncEntryDefaults()"
+                />
+                <input
+                  :value="store.tournament.bank.entryPreset.chips"
+                  type="number"
+                  min="0"
+                  class="field-input w-full"
+                  @change="store.updateBank({ entryPreset: { money: store.tournament.bank.entryPreset.money, chips: Number(($event.target as HTMLInputElement).value) } }); syncEntryDefaults()"
+                />
+              </span>
+            </label>
+            <label class="text-xs text-cloth-muted">
+              Докуп: ₽ / фишки
+              <span class="mt-1 flex gap-1">
+                <input
+                  :value="store.tournament.bank.rebuyPreset.money"
+                  type="number"
+                  min="0"
+                  class="field-input w-full"
+                  @change="store.updateBank({ rebuyPreset: { money: Number(($event.target as HTMLInputElement).value), chips: store.tournament.bank.rebuyPreset.chips } })"
+                />
+                <input
+                  :value="store.tournament.bank.rebuyPreset.chips"
+                  type="number"
+                  min="0"
+                  class="field-input w-full"
+                  @change="store.updateBank({ rebuyPreset: { money: store.tournament.bank.rebuyPreset.money, chips: Number(($event.target as HTMLInputElement).value) } })"
+                />
+              </span>
+            </label>
+            <label class="text-xs text-cloth-muted">
+              Дон: ₽ / фишки
+              <span class="mt-1 flex gap-1">
+                <input
+                  :value="store.tournament.bank.addonPreset.money"
+                  type="number"
+                  min="0"
+                  class="field-input w-full"
+                  @change="store.updateBank({ addonPreset: { money: Number(($event.target as HTMLInputElement).value), chips: store.tournament.bank.addonPreset.chips } })"
+                />
+                <input
+                  :value="store.tournament.bank.addonPreset.chips"
+                  type="number"
+                  min="0"
+                  class="field-input w-full"
+                  @change="store.updateBank({ addonPreset: { money: store.tournament.bank.addonPreset.money, chips: Number(($event.target as HTMLInputElement).value) } })"
+                />
+              </span>
+            </label>
+          </div>
+          <div class="mt-3 flex flex-wrap gap-3">
+            <label
+              v-for="place in store.tournament.bank.prizePlaces"
+              :key="place.place"
+              class="text-xs text-cloth-muted"
+            >
+              {{ place.place }} место, %
+              <input
+                :value="place.percent"
+                type="number"
+                min="0"
+                max="100"
+                class="field-input mt-1 w-20"
+                @change="store.setPrizePlace(place.place, Number(($event.target as HTMLInputElement).value))"
+              />
+            </label>
+          </div>
+        </BankPanel>
+      </section>
 
       <section class="card-surface mt-6 p-4">
         <h3 class="flex items-center gap-2 font-display text-lg font-bold">
           <AppIcon name="users" class="text-cloth-accent" /> Игроки
         </h3>
-        <p class="mt-1 text-xs text-cloth-muted">Категория влияет на тариф, когда у игрока забирают фишки.</p>
+        <p class="mt-1 text-xs text-cloth-muted">
+          {{ isOrganizer ? 'Группа и фишки — для разметки тура. Докупы и доны можно писать прямо здесь, в любой момент.' : 'Группа влияет на тариф при забитии.' }}
+          По умолчанию 20 фишек.
+        </p>
 
         <form class="mt-4 grid gap-3 sm:grid-cols-4" @submit.prevent="add">
-          <input
-            v-model="name"
-            class="rounded-lg border border-white/15 bg-black/30 px-3 py-2 sm:col-span-2"
-            placeholder="Имя"
-            required
-          />
-          <select v-model.number="category" class="rounded-lg border border-white/15 bg-black/30 px-3 py-2">
-            <option :value="1">Cat 1 (сильнее)</option>
-            <option :value="2">Cat 2</option>
-            <option :value="3">Cat 3</option>
+          <input v-model="name" class="field-input sm:col-span-2" placeholder="Имя" required />
+          <select v-model.number="category" class="field-input">
+            <option :value="1">Группа 1 (сильнее)</option>
+            <option :value="2">Группа 2</option>
+            <option :value="3">Группа 3</option>
           </select>
           <input
             v-model.number="stack"
             type="number"
             min="0"
-            class="rounded-lg border border-white/15 bg-black/30 px-3 py-2"
-            title="Стартовый стек"
+            class="field-input"
+            :title="isOrganizer ? 'Фишки за взнос' : 'Фишки'"
+            :placeholder="isOrganizer ? 'Фишки' : 'Фишки'"
           />
-          <button type="submit" class="btn-primary sm:col-span-4 inline-flex items-center justify-center gap-2">
+          <input
+            v-if="isOrganizer"
+            v-model.number="entryMoney"
+            type="number"
+            min="0"
+            class="field-input sm:col-span-2"
+            placeholder="Взнос, ₽"
+            title="Стартовый взнос в банк"
+          />
+          <button
+            type="submit"
+            class="btn-primary inline-flex items-center justify-center gap-2"
+            :class="isOrganizer ? 'sm:col-span-2' : 'sm:col-span-4'"
+          >
             <AppIcon name="users" size="sm" /> Добавить
           </button>
         </form>
@@ -114,25 +282,44 @@ const startPlay = () => {
           <li
             v-for="player in store.players"
             :key="player.id"
-            class="flex items-center justify-between gap-2 rounded-xl border border-white/10 bg-black/20 px-4 py-3"
+            class="player-chip"
+            :class="isOrganizer ? '!items-start' : ''"
           >
-            <div class="min-w-0">
-              <p class="truncate font-semibold">{{ player.name }}</p>
-              <p class="text-[10px] text-cloth-muted">{{ player.balance }} фишек</p>
-              <div class="mt-1 flex gap-1">
+            <PlayerAvatar :name="player.name" />
+            <div class="min-w-0 flex-1">
+              <div class="flex items-start justify-between gap-2">
+                <div class="min-w-0">
+                  <p class="truncate font-semibold">{{ player.name }}</p>
+                  <p class="text-[10px] text-cloth-muted">
+                    {{ player.balance }} фишек · {{ statusLabel(player.status) }}
+                    <template v-if="isOrganizer">
+                      · внёс {{ store.playerPaidAmount(player.id).toLocaleString('ru-RU') }} ₽
+                    </template>
+                  </p>
+                </div>
+                <button type="button" class="btn-ghost shrink-0 py-1 text-xs" @click="store.removePlayer(player.id)">
+                  ×
+                </button>
+              </div>
+              <div class="mt-1 flex flex-wrap gap-1">
                 <button
                   v-for="cat in categories"
                   :key="cat"
                   type="button"
                   class="rounded px-2 py-0.5 text-xs"
-                  :class="player.category === cat ? 'bg-cloth-accent text-cloth-deep' : 'border border-white/15'"
+                  :class="
+                    player.category === cat
+                      ? 'bg-cloth-accent text-[color:var(--cloth-deep)]'
+                      : 'border border-[color:var(--cloth-border)]'
+                  "
+                  :title="groupHint(cat)"
                   @click="setCategory(player.id, cat)"
                 >
-                  C{{ cat }}
+                  {{ groupLabel(cat, true) }}
                 </button>
               </div>
+              <PlayerBuyIn v-if="isOrganizer" :player-id="player.id" />
             </div>
-            <button type="button" class="btn-ghost py-1 text-xs" @click="store.removePlayer(player.id)">×</button>
           </li>
         </ul>
       </section>
@@ -141,10 +328,15 @@ const startPlay = () => {
         <div class="flex flex-wrap items-center justify-between gap-3">
           <div>
             <h3 class="flex items-center gap-2 font-display text-lg font-bold">
-              <AppIcon name="clock" class="text-cloth-accent" /> Туры и тарифы
+              <AppIcon name="clock" class="text-cloth-accent" /> Туры и
+              {{ isOrganizer ? 'разметка фишек' : 'тарифы' }}
             </h3>
             <p class="mt-1 text-xs text-cloth-muted">
-              Тариф Cat N — сколько забирают у игрока категории N при забитии шара.
+              {{
+                isOrganizer
+                  ? 'Группа N — ориентир фишек/ставки для этой группы на туре.'
+                  : 'Тариф группы N — сколько забирают у игрока этой группы при забитии.'
+              }}
             </p>
           </div>
           <button type="button" class="btn-ghost text-sm" @click="store.addRound()">+ тур</button>
@@ -153,11 +345,11 @@ const startPlay = () => {
           <div
             v-for="(round, index) in store.tournament.rounds"
             :key="round.number"
-            class="rounded-xl border border-white/10 p-3"
+            class="rounded-xl border border-[color:var(--cloth-border)] p-3"
             :class="index === store.tournament.currentRoundIndex ? 'border-cloth-accent/50 bg-cloth-accent/5' : ''"
           >
             <div class="flex flex-wrap items-center justify-between gap-2">
-              <button type="button" class="text-left font-semibold" @click="store.advanceRound(index)">
+              <button type="button" class="text-left font-semibold" @click="store.setCurrentRound(index)">
                 Тур {{ round.number }}
                 <span v-if="index === store.tournament.currentRoundIndex" class="text-xs text-cloth-accent">· текущий</span>
               </button>
@@ -167,19 +359,19 @@ const startPlay = () => {
                   :value="round.durationMinutes"
                   type="number"
                   min="1"
-                  class="ml-2 w-16 rounded border border-white/15 bg-transparent px-2 py-1"
+                  class="field-input ml-2 w-16 py-1"
                   @change="onDurationChange(index, $event)"
                 />
               </label>
             </div>
             <div class="mt-2 flex flex-wrap gap-3 text-sm">
               <label v-for="cat in categories" :key="cat" class="text-xs">
-                Cat {{ cat }}
+                {{ groupLabel(cat, true) }}
                 <input
                   :value="tariffValue(index, cat)"
                   type="number"
                   min="0"
-                  class="ml-1 w-14 rounded border border-white/15 bg-transparent px-2 py-1"
+                  class="field-input ml-1 w-14 py-1"
                   @change="onTariffChange(index, cat, $event)"
                 />
               </label>
@@ -190,48 +382,90 @@ const startPlay = () => {
 
       <section class="card-surface mt-6 p-4">
         <h3 class="flex items-center gap-2 font-display text-lg font-bold">
-          <AppIcon name="ball" class="text-cloth-accent" /> Столы и рассадка
+          <AppIcon name="ball" class="text-cloth-accent" /> Столы и жеребьёвка
         </h3>
         <p class="mt-1 text-xs text-cloth-muted">
-          Порядок в списке стола = круг. Первый бьёт последнего, второй — первого и т.д.
+          Сначала задайте <strong class="text-cloth-chalk">сколько столов</strong> и их
+          <strong class="text-cloth-chalk">номера в зале</strong> (№3, №7…). Потом нажмите «Рассадить игроков».
         </p>
+
         <div class="mt-4 flex flex-wrap items-end gap-3">
           <label class="text-sm">
-            Столов
+            Кол-во столов
             <input
               :value="store.tournament.tableCount"
               type="number"
               min="1"
               max="12"
-              class="mt-1 w-24 rounded-lg border border-white/15 bg-black/30 px-3 py-2"
+              class="field-input mt-1 w-24"
               @change="onTableCountChange"
             />
           </label>
-          <button type="button" class="btn-primary" @click="store.reseat()">Сгенерировать рассадку</button>
+          <button
+            type="button"
+            class="btn-primary"
+            :disabled="store.activePlayers.length < 2"
+            @click="store.reseat()"
+          >
+            Рассадить игроков
+          </button>
         </div>
 
-        <div v-if="store.tournament.tables.length" class="mt-4 grid gap-3 md:grid-cols-2">
-          <div v-for="table in store.tournament.tables" :key="table.id" class="rounded-xl border border-white/10 p-3">
+        <div class="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          <div
+            v-for="(table, slot) in store.tournament.tables"
+            :key="table.id"
+            class="rounded-xl border border-[color:var(--cloth-border)] bg-[color:var(--cloth-input)] p-3"
+          >
+            <p class="text-[10px] uppercase tracking-wider text-cloth-muted">Слот {{ slot + 1 }}</p>
+            <label class="mt-1 block text-sm font-semibold text-cloth-accent">
+              № стола в зале
+              <input
+                :value="table.number"
+                type="number"
+                min="1"
+                max="99"
+                class="field-input mt-1 w-full"
+                @change="onTableNumberChange(table.id, $event)"
+              />
+            </label>
+            <p class="mt-2 text-xs text-cloth-muted">Будет: {{ table.label }}</p>
+          </div>
+        </div>
+
+        <div
+          v-if="store.tournament.tables.some((t) => t.playerIds.length)"
+          class="mt-5 grid gap-3 md:grid-cols-2"
+        >
+          <div
+            v-for="table in store.tournament.tables"
+            :key="`seat-${table.id}`"
+            class="rounded-xl border border-[color:var(--cloth-border)] p-3"
+          >
             <h4 class="font-semibold text-cloth-accent">{{ table.label }}</h4>
-            <ul class="mt-2 space-y-1 text-sm">
+            <ul class="mt-2 space-y-2 text-sm">
               <li
                 v-for="(player, index) in playersAt(table.id)"
                 :key="player.id"
                 class="flex items-center justify-between gap-2"
               >
-                <span>
-                  <span class="text-cloth-muted">#{{ index + 1 }}</span>
-                  {{ player.name }}
-                  <span class="text-cloth-muted">C{{ player.category }}</span>
+                <span class="inline-flex min-w-0 items-center gap-2">
+                  <PlayerAvatar :name="player.name" size="sm" />
+                  <span class="truncate">
+                    <span class="text-cloth-muted">#{{ index + 1 }}</span>
+                    {{ player.name }}
+                    <span class="text-cloth-muted">{{ groupLabel(player.category, true) }}</span>
+                  </span>
                 </span>
                 <select
-                  class="rounded border border-white/15 bg-black/40 px-2 py-1 text-xs"
+                  class="field-input px-2 py-1 text-xs"
                   :value="table.id"
                   @change="onMovePlayer(player.id, $event)"
                 >
                   <option v-for="t in store.tournament.tables" :key="t.id" :value="t.id">{{ t.label }}</option>
                 </select>
               </li>
+              <li v-if="!playersAt(table.id).length" class="text-xs text-cloth-muted">Пока пусто — нажмите «Рассадить игроков»</li>
             </ul>
           </div>
         </div>
@@ -244,7 +478,8 @@ const startPlay = () => {
           :disabled="store.activePlayers.length < 2"
           @click="startPlay"
         >
-          <AppIcon name="play" size="sm" /> К игре
+          <AppIcon name="play" size="sm" />
+          {{ isOrganizer ? 'К пульту' : 'К игре' }}
         </button>
         <NuxtLink to="/" class="btn-ghost">Назад</NuxtLink>
       </div>

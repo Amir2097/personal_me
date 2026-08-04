@@ -10,12 +10,12 @@ export default {
     extend: {
       colors: {
         cloth: {
-          deep: '#0c1412',
-          green: '#1a4d3a',
-          felt: '#0f3d2e',
-          accent: '#c8a45c',
-          chalk: '#e8f0ea',
-          muted: '#6b8578'
+          deep: 'var(--cloth-deep)',
+          green: 'var(--cloth-green)',
+          felt: 'var(--cloth-felt)',
+          accent: 'var(--cloth-accent)',
+          chalk: 'var(--cloth-chalk)',
+          muted: 'var(--cloth-muted)'
         }
       },
       fontFamily: {

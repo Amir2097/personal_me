@@ -1,21 +1,40 @@
 const SESSION_KEY = 'dautovtech_billiards_access'
 const USER_KEY = 'dautovtech_billiards_user'
 
+/**
+ * Absolute API origin for hub FastAPI.
+ *
+ * Critical: Nuxt sets global $fetch baseURL to app.baseURL (`/billiards/`).
+ * Relative paths like `/api/v1/auth/me` become `/billiards/api/...`, which nginx
+ * proxies to this Nuxt app instead of the backend — auth always fails → redirect loop.
+ * Absolute `http(s)://host/...` URLs are not rewritten by that baseURL.
+ */
 export const useHubAuth = () => {
   const config = useRuntimeConfig()
 
-  const apiBase = computed(() => {
+  const apiOrigin = computed(() => {
     const explicit = (config.public.apiBaseUrl as string | undefined)?.replace(/\/$/, '')
     if (explicit) return explicit
-    // Behind nginx (same origin) relative /api works; standalone :3010 uses hub.
+
     if (import.meta.client) {
       const port = window.location.port
+      // Standalone Nuxt on :3010 — API lives on the hub, not this origin.
       if (port && port !== '80' && port !== '443') {
         return String(config.public.hubUrl || 'http://localhost').replace(/\/$/, '')
       }
+      // Same-origin via nginx (e.g. http://localhost/billiards/) → use page origin.
+      return window.location.origin
     }
-    return ''
+
+    return String(config.public.hubUrl || 'http://localhost').replace(/\/$/, '')
   })
+
+  /** Build absolute API URL that bypasses Nuxt app.baseURL rewriting. */
+  const apiUrl = (path: string) => {
+    const base = apiOrigin.value.replace(/\/$/, '')
+    const normalized = path.startsWith('/') ? path : `/${path}`
+    return `${base}${normalized}`
+  }
 
   const hubUrl = computed(() => String(config.public.hubUrl || 'http://localhost').replace(/\/$/, ''))
 
@@ -55,20 +74,17 @@ export const useHubAuth = () => {
   }
 
   const exchangeSsoCode = async (code: string) => {
-    const result = await $fetch<{ username: string; access_token: string }>(
-      `${apiBase.value}/api/v1/auth/sso/exchange`,
-      {
-        method: 'POST',
-        body: { code },
-        credentials: 'include'
-      }
-    )
+    const result = await $fetch<{ username: string; access_token: string }>(apiUrl('/api/v1/auth/sso/exchange'), {
+      method: 'POST',
+      body: { code },
+      credentials: 'include'
+    })
     persistSession(result.access_token, result.username)
     return result
   }
 
   const fetchMe = async () => {
-    return await $fetch<{ username: string; is_admin: boolean }>(`${apiBase.value}/api/v1/auth/me`, {
+    return await $fetch<{ username: string; is_admin: boolean }>(apiUrl('/api/v1/auth/me'), {
       credentials: 'include',
       headers: authHeaders()
     })
@@ -76,14 +92,11 @@ export const useHubAuth = () => {
 
   const tryRefresh = async () => {
     try {
-      const tokens = await $fetch<{ access_token: string; username?: string }>(
-        `${apiBase.value}/api/v1/auth/refresh`,
-        {
-          method: 'POST',
-          credentials: 'include',
-          body: {}
-        }
-      )
+      const tokens = await $fetch<{ access_token: string; username?: string }>(apiUrl('/api/v1/auth/refresh'), {
+        method: 'POST',
+        credentials: 'include',
+        body: {}
+      })
       if (tokens.access_token) {
         persistSession(tokens.access_token, tokens.username || username.value)
       }
@@ -93,7 +106,7 @@ export const useHubAuth = () => {
     }
   }
 
-  const ensureAuthenticated = async (): Promise<boolean> => {
+  const ensureAuthenticated = async (routeQuery?: Record<string, unknown>): Promise<boolean> => {
     if (!import.meta.client) return false
 
     if (!accessToken.value) {
@@ -103,8 +116,19 @@ export const useHubAuth = () => {
       if (storedUser) username.value = storedUser
     }
 
-    const route = useRoute()
-    const ssoCode = typeof route.query.sso_code === 'string' ? route.query.sso_code : null
+    // Prefer explicit query from middleware `to`; fall back to URL (avoid useRoute in middleware).
+    let ssoCode: string | null = null
+    const fromArg = routeQuery?.sso_code
+    if (typeof fromArg === 'string') ssoCode = fromArg
+    else if (Array.isArray(fromArg) && typeof fromArg[0] === 'string') ssoCode = fromArg[0]
+    else {
+      try {
+        ssoCode = new URL(window.location.href).searchParams.get('sso_code')
+      } catch {
+        ssoCode = null
+      }
+    }
+
     if (ssoCode) {
       try {
         const result = await exchangeSsoCode(ssoCode)
@@ -150,7 +174,8 @@ export const useHubAuth = () => {
   }
 
   return {
-    apiBase,
+    apiOrigin,
+    apiUrl,
     hubUrl,
     accessToken,
     username,
