@@ -68,43 +68,41 @@ describe('tournament scoring', () => {
 })
 
 describe('casual scoring', () => {
-  it('charges only the previous player with ball × their handicap', () => {
+  it('charges only the previous player with ball price', () => {
     const players = [
-      player({ id: 'a', name: 'A', category: 2, handicap: 1 }),
-      player({ id: 'b', name: 'B', category: 2, handicap: 1.5 }),
-      player({ id: 'c', name: 'C', category: 2, handicap: 1 })
+      player({ id: 'a', name: 'A', category: 2, handicap: 0 }),
+      player({ id: 'b', name: 'B', category: 2, handicap: 0 }),
+      player({ id: 'c', name: 'C', category: 2, handicap: 0 })
     ]
-    const ball = { id: 'yellow', label: 'Жёлтый', multiplier: 2, color: '#eab308' }
-    // A scores vs previous C: 2 * 1 = 2
-    const { event } = processCasualScore(players, ['a', 'b', 'c'], 'a', ball, 1, 'casual')
-    expect(event.deltas.a).toBe(2)
-    expect(event.deltas.c).toBe(-2)
+    const ball = { id: 'yellow', label: 'Жёлтый', price: 200, color: '#eab308' }
+    const { event } = processCasualScore(players, ['a', 'b', 'c'], 'a', ball, 100, 'casual')
+    expect(event.deltas.a).toBe(200)
+    expect(event.deltas.c).toBe(-200)
     expect(event.deltas.b).toBeUndefined()
   })
 
   it('B scores vs previous A', () => {
     const players = [
-      player({ id: 'a', name: 'A', category: 2, handicap: 1 }),
-      player({ id: 'b', name: 'B', category: 2, handicap: 1 }),
-      player({ id: 'c', name: 'C', category: 2, handicap: 1 })
+      player({ id: 'a', name: 'A', category: 2, handicap: 0 }),
+      player({ id: 'b', name: 'B', category: 2, handicap: 0 }),
+      player({ id: 'c', name: 'C', category: 2, handicap: 0 })
     ]
-    const ball = { id: 'standard', label: 'Обычный', multiplier: 1, color: '#fff' }
-    const { event } = processCasualScore(players, ['a', 'b', 'c'], 'b', ball, 1, 'casual')
-    expect(event.deltas.b).toBe(1)
-    expect(event.deltas.a).toBe(-1)
+    const ball = { id: 'standard', label: 'Обычный', price: 100, color: '#fff' }
+    const { event } = processCasualScore(players, ['a', 'b', 'c'], 'b', ball, 100, 'casual')
+    expect(event.deltas.b).toBe(100)
+    expect(event.deltas.a).toBe(-100)
     expect(event.deltas.c).toBeUndefined()
   })
 
-  it('negative multiplier acts as penalty for scorer toward previous', () => {
+  it('negative price acts as penalty for scorer toward previous', () => {
     const players = [
       player({ id: 'a', name: 'A', category: 2 }),
       player({ id: 'b', name: 'B', category: 2 })
     ]
-    const ball = { id: 'penalty', label: 'Штраф', multiplier: -2, color: '#a855f7' }
-    const { event } = processCasualScore(players, ['a', 'b'], 'a', ball, 1, 'casual')
-    // previous of A is B; A pays B 2
-    expect(event.deltas.a).toBe(-2)
-    expect(event.deltas.b).toBe(2)
+    const ball = { id: 'penalty', label: 'Штраф', price: -200, color: '#a855f7' }
+    const { event } = processCasualScore(players, ['a', 'b'], 'a', ball, 100, 'casual')
+    expect(event.deltas.a).toBe(-200)
+    expect(event.deltas.b).toBe(200)
     expect(event.kind).toBe('penalty')
   })
 })

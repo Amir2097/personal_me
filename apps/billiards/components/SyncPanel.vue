@@ -52,10 +52,11 @@ const copyTvLink = async () => {
     <div class="flex flex-wrap items-start justify-between gap-3">
       <div>
         <h3 class="flex items-center gap-2 font-display text-lg font-bold">
-          <AppIcon name="tv" class="text-cloth-accent" /> Синк · телефон ↔ TV
+          <AppIcon name="tv" class="text-cloth-accent" /> Общий экран · телефон и табло
         </h3>
         <p class="mt-1 text-xs text-cloth-muted">
-          Хост пушит партию на сервер. Табло на другом устройстве открывает код и обновляется ~раз в секунду.
+          Ведущий с телефона или ноутбука отправляет партию на сервер. Другие устройства открывают
+          код или ссылку табло — без входа в хаб, только просмотр. Обновление примерно раз в секунду.
         </p>
       </div>
     </div>
@@ -67,15 +68,15 @@ const copyTvLink = async () => {
           {{ sync.roomCode.value }}
         </p>
         <p class="mt-1 text-xs text-cloth-muted">
-          rev {{ sync.revision.value }}
+          обновление № {{ sync.revision.value }}
           <span v-if="sync.lastPushedAt.value">
-            · пуш {{ new Date(sync.lastPushedAt.value).toLocaleTimeString('ru-RU') }}
+            · отправлено {{ new Date(sync.lastPushedAt.value).toLocaleTimeString('ru-RU') }}
           </span>
         </p>
       </div>
       <div class="flex flex-wrap gap-2">
         <button type="button" class="btn-ghost text-xs" @click="copyCode">Копировать код</button>
-        <button type="button" class="btn-ghost text-xs" @click="copyTvLink">Копировать ссылку TV</button>
+        <button type="button" class="btn-ghost text-xs" @click="copyTvLink">Копировать ссылку табло</button>
         <NuxtLink
           :to="{ path: '/tv', query: { room: sync.roomCode.value } }"
           class="btn-primary text-xs"
@@ -83,7 +84,7 @@ const copyTvLink = async () => {
         >
           Открыть табло
         </NuxtLink>
-        <button type="button" class="btn-ghost text-xs" @click="sync.clearRoom()">Стоп синк</button>
+        <button type="button" class="btn-ghost text-xs" @click="sync.closeRoom()">Завершить встречу</button>
       </div>
     </div>
 
@@ -91,30 +92,34 @@ const copyTvLink = async () => {
       <p class="text-sm">
         Подключено как табло к комнате
         <strong class="text-cloth-accent">{{ sync.roomCode.value }}</strong>
-        (rev {{ sync.revision.value }})
+        (обновление № {{ sync.revision.value }})
       </p>
-      <button type="button" class="btn-ghost text-xs" @click="sync.clearRoom()">Отключиться</button>
+      <button type="button" class="btn-ghost text-xs" @click="sync.leaveRoom()">Отключиться</button>
     </div>
 
     <div v-else class="mt-4 grid gap-3 sm:grid-cols-2">
       <div class="rounded-xl border border-[color:var(--cloth-border)] p-3">
         <p class="text-sm font-semibold">Я веду партию</p>
-        <p class="mt-1 text-xs text-cloth-muted">Создать код и пушить изменения с этого устройства.</p>
+        <p class="mt-1 text-xs text-cloth-muted">
+          Создать код и отправлять изменения с этого устройства на табло.
+        </p>
         <button
           type="button"
           class="btn-primary mt-3 text-xs"
           :disabled="busy || (ready && !sync.username.value)"
           @click="startHost"
         >
-          {{ busy ? '…' : 'Открыть синк' }}
+          {{ busy ? '…' : 'Создать комнату' }}
         </button>
         <p v-if="ready && !sync.username.value" class="mt-2 text-[11px] text-amber-700">
-          Сначала войдите через хаб (SSO).
+          Сначала войдите через хаб.
         </p>
       </div>
       <div class="rounded-xl border border-[color:var(--cloth-border)] p-3">
         <p class="text-sm font-semibold">Я табло / зритель</p>
-        <p class="mt-1 text-xs text-cloth-muted">Введите код с телефона хоста.</p>
+        <p class="mt-1 text-xs text-cloth-muted">
+          Введите код с телефона ведущего — можно с телефона гостя, планшета или TV по адресу хаба.
+        </p>
         <div class="mt-3 flex gap-2">
           <input
             v-model="joinInput"
@@ -124,12 +129,15 @@ const copyTvLink = async () => {
             @keyup.enter="joinAsTv"
           />
           <button type="button" class="btn-ghost text-xs" :disabled="busy" @click="joinAsTv">
-            Войти
+            Подключить
           </button>
         </div>
       </div>
     </div>
 
+    <p v-if="sync.endedMessage.value && sync.roomStatus.value !== 'live'" class="mt-3 text-xs text-amber-700">
+      {{ sync.endedMessage.value }}
+    </p>
     <p v-if="sync.syncError.value" class="mt-3 text-xs text-red-500">{{ sync.syncError.value }}</p>
   </section>
 </template>

@@ -12,7 +12,6 @@ onMounted(() => {
   if (!store.tournament.tables.length && store.activePlayers.length) {
     store.reseat()
   }
-  sounds.unlock()
 })
 
 const isOrganizer = computed(() => store.tournament.kind === 'organizer')
@@ -192,92 +191,99 @@ const returnPotAt = (tableId: string) => {
       <SyncPanel class="mt-5" />
       <HistoryPanel class="mt-5" compact />
 
-      <div class="mt-6 grid gap-4 lg:grid-cols-2">
-        <section v-for="table in store.tournament.tables" :key="table.id" class="card-surface p-4">
-          <h3 class="flex items-center gap-2 font-display text-lg font-bold text-cloth-accent">
-            <AppIcon name="ball" /> {{ table.label }}
-          </h3>
-          <p class="mt-1 text-xs text-cloth-muted">
-            {{ isOrganizer ? 'Состав' : 'Круг' }}: {{ orderLabel(table.playerIds) || '—' }}
-          </p>
+      <div class="tables-grid">
+        <section v-for="table in store.tournament.tables" :key="table.id" class="table-board">
+          <div class="flex flex-wrap items-baseline justify-between gap-2">
+            <h3 class="flex items-center gap-1.5 font-display text-base font-bold text-cloth-accent">
+              <AppIcon name="ball" size="sm" /> {{ table.label }}
+              <span class="text-[10px] font-normal uppercase tracking-wide text-cloth-muted">
+                № {{ table.number }}
+              </span>
+            </h3>
+            <p class="max-w-[70%] truncate text-[10px] text-cloth-muted" :title="orderLabel(table.playerIds)">
+              {{ isOrganizer ? 'Состав' : 'Круг' }}: {{ orderLabel(table.playerIds) || '—' }}
+            </p>
+          </div>
 
           <div
             v-if="!isOrganizer && potAt(table.id)"
-            class="mt-3 flex flex-wrap items-center justify-between gap-2 rounded-xl border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-sm"
+            class="mt-2 flex flex-wrap items-center justify-between gap-2 rounded-lg border border-amber-500/40 bg-amber-500/10 px-2.5 py-1.5 text-xs"
           >
-            <div>
-              <p>
-                Общак:
-                <strong class="text-cloth-accent">{{ potAt(table.id)?.amount }}</strong> фиш.
-              </p>
-              <p class="text-xs text-cloth-muted">
-                Ход круга:
-                <span class="text-cloth-accent">{{ potCursorName(table.id) }}</span>
-                · «+ Шар» забирает общак · «Мимо» двигает круг
-              </p>
-            </div>
-            <button type="button" class="btn-ghost py-1 text-xs" @click="returnPotAt(table.id)">
-              Вернуть сейчас
+            <p>
+              Общак
+              <strong class="text-cloth-accent">{{ potAt(table.id)?.amount }}</strong>
+              · ход
+              <span class="text-cloth-accent">{{ potCursorName(table.id) }}</span>
+            </p>
+            <button type="button" class="btn-ghost !px-2 !py-0.5 text-[10px]" @click="returnPotAt(table.id)">
+              Вернуть
             </button>
           </div>
 
-          <div class="mt-3 space-y-3">
+          <div class="mt-2 space-y-1.5">
             <article
               v-for="(player, index) in playersAt(table.playerIds)"
               :key="player.id"
-              class="player-chip"
+              class="player-chip player-chip--dense"
               :class="{
                 'opacity-50': player.status === 'eliminated',
                 'ring-1 ring-amber-400/60':
                   !isOrganizer && potAt(table.id)?.passCursorPlayerId === player.id
               }"
             >
-              <PlayerAvatar :name="player.name" />
+              <PlayerAvatar :name="player.name" size="sm" />
               <div class="min-w-0 flex-1">
-                <p class="font-semibold">
-                  <span class="mr-1 text-xs text-cloth-muted">#{{ index + 1 }}</span>
-                  {{ player.name }}
+                <div class="flex flex-wrap items-center gap-x-2 gap-y-0.5">
+                  <p class="truncate text-sm font-semibold leading-tight">
+                    <span class="mr-1 text-[10px] font-normal text-cloth-muted">#{{ index + 1 }}</span>
+                    {{ player.name }}
+                  </p>
+                  <span class="text-[10px] text-cloth-muted">{{ groupLabel(player.category, true) }}</span>
                   <span
                     v-if="!isOrganizer && potAt(table.id)?.passCursorPlayerId === player.id"
-                    class="ml-1 text-[10px] uppercase tracking-wide text-amber-300"
+                    class="text-[9px] uppercase tracking-wide text-amber-600"
                   >
-                    ход круга
+                    ход
                   </span>
-                </p>
-                <p class="text-xs text-cloth-muted">
-                  {{ groupLabel(player.category) }}
-                  <template v-if="!isOrganizer && player.status === 'active' && previousOf(table.playerIds, player.id)">
-                    · бьёт
-                    <span class="text-cloth-accent">{{ previousOf(table.playerIds, player.id)?.name }}</span>
-                  </template>
-                  <template v-else-if="player.status === 'eliminated'"> · вне игры</template>
-                </p>
-                <div class="mt-2 flex flex-wrap gap-2">
+                  <span v-if="player.status === 'eliminated'" class="text-[10px] text-cloth-muted">вне игры</span>
+                  <span
+                    v-else-if="!isOrganizer && previousOf(table.playerIds, player.id)"
+                    class="truncate text-[10px] text-cloth-muted"
+                  >
+                    → {{ previousOf(table.playerIds, player.id)?.name }}
+                  </span>
+                </div>
+
+                <div class="mt-1 flex flex-wrap items-center gap-1">
                   <template v-if="!isOrganizer && player.status === 'active'">
                     <button
                       type="button"
-                      class="btn-primary inline-flex items-center gap-1 py-1.5 text-xs"
+                      class="btn-primary !px-2 !py-0.5 text-[10px]"
                       @click="scoreAt(table.id, table.playerIds, player.id)"
                     >
-                      <AppIcon name="ball" size="sm" /> + Шар
+                      + Шар
                     </button>
                     <button
                       v-if="potAt(table.id)?.passCursorPlayerId === player.id"
                       type="button"
-                      class="btn-ghost py-1.5 text-xs"
+                      class="btn-ghost !px-2 !py-0.5 text-[10px]"
                       @click="passMissAt(table.id, player.id)"
                     >
                       Мимо
                     </button>
                     <button
                       type="button"
-                      class="btn-ghost py-1.5 text-xs"
-                      :title="`В общак ${fineAmount} фиш. (ставка группы 1)`"
+                      class="btn-ghost !px-2 !py-0.5 text-[10px]"
+                      :title="`В общак ${fineAmount} фиш.`"
                       @click="fineAt(table.id, table.playerIds, player.id)"
                     >
-                      Штраф · {{ fineAmount }}
+                      Штраф {{ fineAmount }}
                     </button>
-                    <button type="button" class="btn-ghost py-1.5 text-xs" @click="store.dropout(table.id, player.id)">
+                    <button
+                      type="button"
+                      class="btn-ghost !px-2 !py-0.5 text-[10px]"
+                      @click="store.dropout(table.id, player.id)"
+                    >
                       Выбыл
                     </button>
                   </template>
@@ -285,33 +291,40 @@ const returnPotAt = (tableId: string) => {
                     <button
                       v-if="player.status === 'active'"
                       type="button"
-                      class="btn-ghost py-1.5 text-xs"
+                      class="btn-ghost !px-2 !py-0.5 text-[10px]"
                       @click="store.dropout(table.id, player.id)"
                     >
-                      Убрать с тура
+                      Убрать
                     </button>
-                    <button v-else type="button" class="btn-primary py-1.5 text-xs" @click="store.reinstate(player.id)">
+                    <button
+                      v-else
+                      type="button"
+                      class="btn-primary !px-2 !py-0.5 text-[10px]"
+                      @click="store.reinstate(player.id)"
+                    >
                       Вернуть
                     </button>
                   </template>
                 </div>
-                <PlayerBuyIn :player-id="player.id" />
+
+                <PlayerBuyIn v-if="isOrganizer" :player-id="player.id" compact :history-limit="3" />
               </div>
-              <div class="text-right">
-                <p class="text-[10px] uppercase text-cloth-muted">
-                  {{ isOrganizer ? 'разметка' : 'фишки' }}
+
+              <div class="shrink-0 text-right">
+                <p class="text-[9px] uppercase tracking-wide text-cloth-muted">
+                  {{ isOrganizer ? 'фиш.' : 'фиш.' }}
                 </p>
                 <input
                   v-if="isOrganizer"
                   :value="player.balance"
                   type="number"
-                  class="field-input mt-0.5 w-20 py-1 text-right font-display text-lg font-bold tabular-nums text-cloth-accent"
+                  class="field-input mt-0.5 w-14 !px-1.5 !py-0.5 text-right font-display text-base font-bold tabular-nums text-cloth-accent"
                   @change="onChipMarkupChange(player.id, $event)"
                 />
-                <p v-else class="font-display text-2xl font-bold tabular-nums text-cloth-accent">
+                <p v-else class="font-display text-xl font-bold leading-none tabular-nums text-cloth-accent">
                   {{ player.balance }}
                 </p>
-                <p class="mt-0.5 text-[10px] text-cloth-muted">
+                <p v-if="isOrganizer" class="mt-0.5 text-[10px] text-cloth-muted">
                   {{ store.playerPaidAmount(player.id).toLocaleString('ru-RU') }} ₽
                 </p>
               </div>
@@ -320,25 +333,25 @@ const returnPotAt = (tableId: string) => {
         </section>
       </div>
 
-      <section v-if="isOrganizer && store.eliminatedPlayers.length" class="card-surface mt-6 p-4">
-        <h3 class="flex items-center gap-2 font-display text-lg font-bold">
-          <AppIcon name="users" class="text-cloth-accent" /> Вне текущего состава
+      <section v-if="isOrganizer && store.eliminatedPlayers.length" class="card-surface mt-5 p-3">
+        <h3 class="flex items-center gap-2 font-display text-base font-bold">
+          <AppIcon name="users" class="text-cloth-accent" size="sm" /> Вне текущего состава
         </h3>
-        <ul class="mt-3 grid gap-3 sm:grid-cols-2">
+        <ul class="mt-2 grid gap-1.5 sm:grid-cols-2 xl:grid-cols-3">
           <li
             v-for="player in store.eliminatedPlayers"
             :key="player.id"
-            class="player-chip !items-start"
+            class="player-chip player-chip--dense !items-start"
           >
             <PlayerAvatar :name="player.name" size="sm" />
             <div class="min-w-0 flex-1">
-              <div class="flex flex-wrap items-center justify-between gap-2">
-                <span>{{ player.name }}</span>
-                <button type="button" class="btn-ghost py-0.5 text-xs" @click="store.reinstate(player.id)">
+              <div class="flex flex-wrap items-center justify-between gap-1">
+                <span class="truncate text-sm">{{ player.name }}</span>
+                <button type="button" class="btn-ghost !px-2 !py-0.5 text-[10px]" @click="store.reinstate(player.id)">
                   вернуть
                 </button>
               </div>
-              <PlayerBuyIn :player-id="player.id" />
+              <PlayerBuyIn :player-id="player.id" compact :history-limit="2" />
             </div>
           </li>
         </ul>

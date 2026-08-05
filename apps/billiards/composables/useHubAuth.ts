@@ -1,5 +1,9 @@
 const SESSION_KEY = 'dautovtech_billiards_access'
 const USER_KEY = 'dautovtech_billiards_user'
+const SSO_CONSUMED_KEY = 'dautovtech_billiards_sso_consumed'
+
+/** One exchange at a time — middleware / remount must not burn the same one-time code twice. */
+let ssoExchangeInFlight: Promise<{ username: string; access_token: string } | null> | null = null
 
 /**
  * Absolute API origin for hub FastAPI.
@@ -74,13 +78,34 @@ export const useHubAuth = () => {
   }
 
   const exchangeSsoCode = async (code: string) => {
-    const result = await $fetch<{ username: string; access_token: string }>(apiUrl('/api/v1/auth/sso/exchange'), {
-      method: 'POST',
-      body: { code },
-      credentials: 'include'
-    })
-    persistSession(result.access_token, result.username)
-    return result
+    if (ssoExchangeInFlight) return ssoExchangeInFlight
+
+    ssoExchangeInFlight = (async () => {
+      try {
+        // Mark + strip before network so a remount cannot POST the same one-time code again.
+        if (import.meta.client) {
+          sessionStorage.setItem(SSO_CONSUMED_KEY, code)
+        }
+        stripSsoCodeFromUrl()
+
+        const result = await $fetch<{ username: string; access_token: string }>(
+          apiUrl('/api/v1/auth/sso/exchange'),
+          {
+            method: 'POST',
+            body: { code },
+            credentials: 'include'
+          }
+        )
+        persistSession(result.access_token, result.username)
+        return result
+      } catch {
+        return null
+      } finally {
+        ssoExchangeInFlight = null
+      }
+    })()
+
+    return ssoExchangeInFlight
   }
 
   const fetchMe = async () => {
@@ -130,15 +155,17 @@ export const useHubAuth = () => {
     }
 
     if (ssoCode) {
-      try {
-        const result = await exchangeSsoCode(ssoCode)
+      const alreadyConsumed = sessionStorage.getItem(SSO_CONSUMED_KEY) === ssoCode
+      if (alreadyConsumed) {
         stripSsoCodeFromUrl()
-        username.value = result.username
-        ready.value = true
-        // После успешного SSO не зовём navigateTo — иначе middleware обрывается и уходит на хаб.
-        return true
-      } catch {
-        // Fall through to cookie/Bearer check.
+      } else {
+        const result = await exchangeSsoCode(ssoCode)
+        if (result) {
+          username.value = result.username
+          ready.value = true
+          return true
+        }
+        // Fall through to cookie/Bearer check if exchange failed (expired / already used).
       }
     }
 
@@ -180,6 +207,7 @@ export const useHubAuth = () => {
     accessToken,
     username,
     ready,
+    authHeaders,
     ensureAuthenticated,
     redirectToHubLogin,
     persistSession

@@ -10,8 +10,8 @@ export default defineNuxtPlugin(() => {
     sync.onLocalChange()
   })
 
-  // Resume follower polling after reload.
+  // Resume follower only if the room still exists (validated async).
   if (sync.role.value === 'follower' && sync.roomCode.value) {
-    sync.startPolling()
+    void sync.resumeFollowerIfPossible()
   }
 })

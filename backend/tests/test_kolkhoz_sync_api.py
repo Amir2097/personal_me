@@ -49,3 +49,8 @@ def test_kolkhoz_session_sync_flow(client):
         json=payload,
     )
     assert denied.status_code == 401
+
+    closed = client.delete(f"/api/v1/kolkhoz/sessions/{code}", headers=headers)
+    assert closed.status_code == 204
+    missing = client.get(f"/api/v1/kolkhoz/sessions/{code}")
+    assert missing.status_code == 404

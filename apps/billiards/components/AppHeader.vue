@@ -14,7 +14,6 @@ const clientReady = ref(false)
 onMounted(() => {
   hydrateTheme()
   clientReady.value = true
-  sounds.unlock()
 })
 </script>
 

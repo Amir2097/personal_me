@@ -73,6 +73,21 @@ def get_kolkhoz_session(
     )
 
 
+@router.delete(
+    "/sessions/{code}",
+    status_code=204,
+    summary="Завершить комнату (встречу)",
+)
+def close_kolkhoz_session(
+    code: str,
+    username: str = Depends(get_current_username),
+    session: Session = Depends(get_session),
+) -> Response:
+    """Хост завершает трансляцию — код больше не действует."""
+    kolkhoz_sync_service.close_session(session, code, username)
+    return Response(status_code=204)
+
+
 def _to_summary(row) -> KolkhozGameSummary:
     return KolkhozGameSummary(
         id=row.id,
@@ -100,6 +115,24 @@ def save_kolkhoz_game(
 ) -> KolkhozGameSummary:
     """Сохранить снимок текущей партии под аккаунтом хаба."""
     row = kolkhoz_history_service.save_game(session, username, payload.state, payload.title)
+    return _to_summary(row)
+
+
+@router.put(
+    "/games/{game_id}",
+    response_model=KolkhozGameSummary,
+    summary="Обновить сохранённую партию",
+)
+def update_kolkhoz_game(
+    game_id: int,
+    payload: KolkhozGameSaveRequest,
+    username: str = Depends(get_current_username),
+    session: Session = Depends(get_session),
+) -> KolkhozGameSummary:
+    """Перезаписать снимок (туры, докупы, выбывшие и т.д.)."""
+    row = kolkhoz_history_service.update_game(
+        session, game_id, username, payload.state, payload.title
+    )
     return _to_summary(row)
 
 

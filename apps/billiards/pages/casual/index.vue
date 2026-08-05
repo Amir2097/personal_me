@@ -1,11 +1,11 @@
 <script setup lang="ts">
-import type { PlayerCategory } from '~/types/kolkhoz'
+import type { CasualBallPartyRole, CasualPenaltyMode } from '~/types/kolkhoz'
+import { penaltyModeLabel } from '~/utils/casualPenalties'
 
 const store = useKolkhozStore()
 const name = ref('')
-const category = ref<PlayerCategory>(2)
-const handicap = ref(1)
-const stack = ref(20)
+const handicap = ref(0)
+const stakePrice = ref<number | ''>('')
 
 onMounted(() => {
   if (!store.mode) store.setMode('casual')
@@ -14,25 +14,57 @@ onMounted(() => {
 const add = () => {
   store.addPlayer({
     name: name.value,
-    category: category.value,
     handicap: handicap.value,
-    startingStack: stack.value
+    stakePrice: stakePrice.value === '' ? undefined : Number(stakePrice.value)
   })
   name.value = ''
+  stakePrice.value = ''
 }
 
 const canPlay = computed(() => store.activePlayers.length >= 2 && store.activePlayers.length <= 5)
 
-const onBaseUnitChange = (event: Event) => {
-  store.setCasualBaseUnit(Number((event.target as HTMLInputElement).value))
+const onBallPriceChange = (event: Event) => {
+  store.setCasualBallPrice(Number((event.target as HTMLInputElement).value))
 }
 
 const onBallLabelChange = (ballId: string, event: Event) => {
   store.updateBall(ballId, { label: (event.target as HTMLInputElement).value })
 }
 
-const onBallMultiplierChange = (ballId: string, event: Event) => {
-  store.updateBall(ballId, { multiplier: Number((event.target as HTMLInputElement).value) })
+const onBallPriceFieldChange = (ballId: string, event: Event) => {
+  store.updateBall(ballId, { price: Number((event.target as HTMLInputElement).value) })
+}
+
+const onBallRoleChange = (ballId: string, event: Event) => {
+  store.updateBall(ballId, {
+    partyRole: (event.target as HTMLSelectElement).value as CasualBallPartyRole
+  })
+}
+
+const penaltyModes: { id: CasualPenaltyMode; title: string; text: string }[] = [
+  {
+    id: 'pay_all',
+    title: 'Платит всем за столом',
+    text: 'Провинившийся отдаёт фиксированную сумму каждому оппоненту. При личной ставке сильный игрок платит больше.'
+  },
+  {
+    id: 'ball_from_home',
+    title: 'Шар из дома',
+    text: 'Игрок выставляет один забитый шар на стол (или копит долг, если ещё ничего не забил). Баланс ₽ не меняется.'
+  },
+  {
+    id: 'pass_advantage',
+    title: 'Переход хода + свободный удар',
+    text: 'Без денег: следующий по кругу получает свободный удар (ball-in-hand). Отмечается на столе.'
+  }
+]
+
+const selectPenaltyMode = (mode: CasualPenaltyMode) => {
+  store.setCasualPenalties({ mode })
+}
+
+const togglePersonalStake = (event: Event) => {
+  store.setCasualPenalties({ usePersonalStake: (event.target as HTMLInputElement).checked })
 }
 
 const moveUp = (index: number) => {
@@ -66,57 +98,69 @@ const moveDown = (index: number) => {
       <h2 class="mt-1 font-display text-2xl font-bold">Быстрый стол</h2>
 
       <InfoCallout class="mt-5" title="Порядок игроков важен" icon="users">
-        Добавляйте игроков по кругу сидения. Предыдущий в списке — тот, у кого забирают фишки при забитии.
-        Можно менять порядок стрелками ↑ ↓ после добавления.
+        Добавляйте игроков по кругу сидения. Первый в списке разбивает пирамиду.
+        После каждой партии очередь сдвигается: второй становится разбивающим.
+        Фора — целое число шаров, которое прибавляется к результату игрока при закрытии партии.
       </InfoCallout>
 
       <section class="card-surface mt-6 p-4">
         <h3 class="flex items-center gap-2 font-display text-lg font-bold">
           <AppIcon name="users" class="text-cloth-accent" /> Игроки
         </h3>
-        <p class="mt-1 text-xs text-cloth-muted">2–5 человек. Фора — множитель выплаты предыдущего.</p>
+        <p class="mt-1 text-xs text-cloth-muted">2–5 человек. Группы и фишки не нужны.</p>
 
-        <form class="mt-4 grid gap-3 sm:grid-cols-2" @submit.prevent="add">
+        <form class="mt-4 grid gap-3 sm:grid-cols-[1fr_auto_auto_auto]" @submit.prevent="add">
           <input
             v-model="name"
             class="field-input outline-none focus:border-cloth-accent"
             placeholder="Имя игрока"
             required
           />
-          <select v-model.number="category" class="field-input">
-            <option :value="1">Группа 1 (сильнее)</option>
-            <option :value="2">Группа 2</option>
-            <option :value="3">Группа 3</option>
-          </select>
           <label class="text-sm">
-            Фора (коэф.)
-            <input v-model.number="handicap" type="number" min="0.1" step="0.1" class="field-input mt-1 w-full" />
+            Фора (+шар.)
+            <input
+              v-model.number="handicap"
+              type="number"
+              min="0"
+              step="1"
+              class="field-input mt-1 w-24"
+            />
           </label>
           <label class="text-sm">
-            Стартовые фишки
-            <input v-model.number="stack" type="number" min="0" class="field-input mt-1 w-full" />
+            Ставка ₽
+            <input
+              v-model.number="stakePrice"
+              type="number"
+              min="1"
+              step="10"
+              class="field-input mt-1 w-24"
+              :placeholder="String(store.casual.ballPrice)"
+            />
           </label>
-          <button type="submit" class="btn-primary sm:col-span-2">Добавить игрока</button>
+          <button type="submit" class="btn-primary self-end">Добавить</button>
         </form>
 
         <ul class="mt-4 space-y-2">
-          <li
-            v-for="(player, index) in store.players"
-            :key="player.id"
-            class="player-chip"
-          >
+          <li v-for="(player, index) in store.players" :key="player.id" class="player-chip">
             <PlayerAvatar :name="player.name" />
             <div class="min-w-0 flex-1">
               <p class="font-semibold">
                 <span class="text-xs text-cloth-muted">#{{ index + 1 }}</span>
                 {{ player.name }}
+                <span v-if="index === 0" class="ml-1 text-[10px] uppercase text-cloth-accent">разбив</span>
               </p>
-              <p class="text-xs text-cloth-muted">фора x{{ player.handicap }} · {{ player.balance }} фишек</p>
+              <p class="text-xs text-cloth-muted">
+                <template v-if="player.handicap > 0">фора +{{ player.handicap }} шар.</template>
+                <template v-else>без форы</template>
+                · ставка {{ (player.stakePrice || store.casual.ballPrice).toLocaleString('ru-RU') }} ₽
+              </p>
             </div>
             <div class="flex gap-1">
-              <button type="button" class="btn-ghost px-2 py-1 text-xs" title="Выше в круге" @click="moveUp(index)">↑</button>
-              <button type="button" class="btn-ghost px-2 py-1 text-xs" title="Ниже в круге" @click="moveDown(index)">↓</button>
-              <button type="button" class="btn-ghost px-2 py-1 text-xs" @click="store.removePlayer(player.id)">удалить</button>
+              <button type="button" class="btn-ghost px-2 py-1 text-xs" @click="moveUp(index)">↑</button>
+              <button type="button" class="btn-ghost px-2 py-1 text-xs" @click="moveDown(index)">↓</button>
+              <button type="button" class="btn-ghost px-2 py-1 text-xs" @click="store.removePlayer(player.id)">
+                удалить
+              </button>
             </div>
           </li>
         </ul>
@@ -124,22 +168,23 @@ const moveDown = (index: number) => {
 
       <section class="card-surface mt-6 p-4">
         <h3 class="flex items-center gap-2 font-display text-lg font-bold">
-          <AppIcon name="ball" class="text-cloth-accent" /> Шары и стоимость
+          <AppIcon name="ball" class="text-cloth-accent" /> Шары и цены
         </h3>
         <p class="mt-1 text-xs text-cloth-muted">
-          Множитель шара умножается на базовую единицу и фору предыдущего игрока.
-          Отрицательный множитель — штраф (вы платите предыдущему).
+          Базовая ставка стола и цена каждого шара. Для каждого цвета выберите:
+          <strong class="text-cloth-chalk">в пирамиду (16)</strong> — занимает слот раскладки;
+          <strong class="text-cloth-chalk">дополнительно</strong> — сверх 16, не двигает счётчик пирамиды.
         </p>
 
         <label class="mt-4 block text-sm">
-          Базовая единица (фишки за 1×)
+          Базовая ставка стола (₽ за обычный шар)
           <input
-            :value="store.casual.baseUnit"
+            :value="store.casual.ballPrice"
             type="number"
-            min="0.1"
-            step="0.5"
-            class="field-input mt-1 w-32"
-            @change="onBaseUnitChange"
+            min="1"
+            step="10"
+            class="field-input mt-1 w-36"
+            @change="onBallPriceChange"
           />
         </label>
 
@@ -152,15 +197,91 @@ const moveDown = (index: number) => {
               @change="onBallLabelChange(ball.id, $event)"
             />
             <input
-              :value="ball.multiplier"
+              :value="ball.price"
               type="number"
-              step="0.5"
-              class="w-20 rounded border border-white/10 bg-transparent px-2 py-1"
-              @change="onBallMultiplierChange(ball.id, $event)"
+              step="10"
+              class="w-24 rounded border border-white/10 bg-transparent px-2 py-1"
+              @change="onBallPriceFieldChange(ball.id, $event)"
             />
+            <span class="text-xs text-cloth-muted">₽</span>
+            <select
+              :value="ball.partyRole"
+              class="rounded border border-white/10 bg-transparent px-2 py-1 text-xs"
+              :disabled="ball.id === 'standard'"
+              @change="onBallRoleChange(ball.id, $event)"
+            >
+              <option value="rack">в пирамиду (16)</option>
+              <option value="extra">дополнительно</option>
+            </select>
+            <button
+              v-if="!['standard', 'yellow', 'red', 'black'].includes(ball.id)"
+              type="button"
+              class="btn-ghost px-2 py-1 text-xs text-red-300 hover:border-red-400/40"
+              @click="store.removeBall(ball.id)"
+            >
+              удалить
+            </button>
           </li>
         </ul>
         <button type="button" class="btn-ghost mt-3 text-sm" @click="store.addBall()">+ добавить шар</button>
+      </section>
+
+      <section class="card-surface mt-6 p-4">
+        <h3 class="flex items-center gap-2 font-display text-lg font-bold">
+          <AppIcon name="chip" class="text-cloth-accent" /> Штрафы (фолы)
+        </h3>
+        <p class="mt-1 text-xs text-cloth-muted">
+          Выберите до начала игры. На столе кнопка «Фол» у провинившегося игрока.
+          Сейчас: <strong class="text-cloth-chalk">{{ penaltyModeLabel(store.casual.penalties.mode) }}</strong>
+        </p>
+
+        <div class="mt-4 grid gap-3">
+          <button
+            v-for="mode in penaltyModes"
+            :key="mode.id"
+            type="button"
+            class="panel-surface p-4 text-left transition"
+            :class="
+              store.casual.penalties.mode === mode.id
+                ? 'border-cloth-accent bg-cloth-accent/10 ring-1 ring-cloth-accent/50'
+                : 'hover:border-cloth-accent/40'
+            "
+            @click="selectPenaltyMode(mode.id)"
+          >
+            <div class="flex items-start justify-between gap-3">
+              <div class="min-w-0">
+                <p class="font-semibold text-cloth-chalk">{{ mode.title }}</p>
+                <p class="mt-1 text-xs text-cloth-muted">{{ mode.text }}</p>
+              </div>
+              <span
+                class="mt-0.5 inline-flex h-6 w-6 items-center justify-center rounded-full border"
+                :class="
+                  store.casual.penalties.mode === mode.id
+                    ? 'border-cloth-accent bg-cloth-accent/20'
+                    : 'border-white/15 bg-transparent'
+                "
+                aria-hidden="true"
+              >
+                <span
+                  v-if="store.casual.penalties.mode === mode.id"
+                  class="h-2.5 w-2.5 rounded-full bg-cloth-accent"
+                />
+              </span>
+            </div>
+          </button>
+        </div>
+
+        <label
+          v-if="store.casual.penalties.mode === 'pay_all'"
+          class="mt-4 flex items-center gap-2 text-sm"
+        >
+          <input
+            type="checkbox"
+            :checked="store.casual.penalties.usePersonalStake"
+            @change="togglePersonalStake"
+          />
+          Личная ставка провинившегося (сильный игрок платит больше)
+        </label>
       </section>
 
       <div class="mt-6 flex flex-wrap gap-3">

@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { groupLabel, modeLabel, tournamentKindLabel } from '~/utils/labels'
+import { createEmptyState } from '~/types/kolkhoz'
 
 const store = useKolkhozStore()
 const config = useRuntimeConfig()
@@ -12,10 +13,11 @@ useHead({
 })
 
 const sounds = useGameSounds()
-const remainingLabel = ref('—:—')
+const remainingLabel = ref('--:--')
 const timerStatus = ref<'idle' | 'running' | 'paused'>('idle')
 const roomInput = ref('')
 const joinBusy = ref(false)
+const showSwitchForm = ref(false)
 let timer: ReturnType<typeof setInterval> | null = null
 const hasBeeped = ref(false)
 
@@ -35,7 +37,7 @@ const tick = () => {
   const ends = store.tournament.roundEndsAt
   if (!ends) {
     timerStatus.value = 'idle'
-    remainingLabel.value = '—:—'
+    remainingLabel.value = '--:--'
     hasBeeped.value = false
     return
   }
@@ -66,16 +68,24 @@ const connectRoom = async (code: string) => {
   joinBusy.value = true
   try {
     const ok = await sync.joinRoom(code)
-    if (ok) tick()
+    if (ok) {
+      showSwitchForm.value = false
+      tick()
+    }
   } finally {
     joinBusy.value = false
   }
 }
 
+const disconnectBoard = () => {
+  sync.leaveRoom()
+  roomInput.value = ''
+  showSwitchForm.value = true
+  tick()
+}
+
 onMounted(async () => {
   hydrateTheme()
-  sync.hydrateMeta()
-  store.hydrate()
   tick()
   timer = setInterval(tick, 250)
   window.addEventListener('storage', onStorage)
@@ -84,10 +94,25 @@ onMounted(async () => {
   if (q) {
     roomInput.value = q
     await connectRoom(q)
-  } else if (sync.role.value === 'follower' && sync.roomCode.value) {
-    sync.startPolling()
+    return
   }
+
+  // Rejoin saved follower room only if it still exists on the server.
+  const resumed = await sync.resumeFollowerIfPossible()
+  if (!resumed) {
+    // Do NOT hydrate old localStorage game — that looked like a “ghost” sync.
+    // Start with an empty board until a live code is entered.
+    Object.assign(store, createEmptyState())
+    showSwitchForm.value = true
+  }
+  tick()
 })
+
+const loadLocalPreview = () => {
+  store.hydrate()
+  showSwitchForm.value = true
+  tick()
+}
 
 onBeforeUnmount(() => {
   if (timer) clearInterval(timer)
@@ -127,7 +152,14 @@ const backLabel = computed(() => {
 })
 
 const canControlTimer = computed(() => store.mode === 'tournament' && Boolean(store.currentRound))
-const isRemoteFollower = computed(() => sync.role.value === 'follower')
+const isRemoteFollower = computed(() => sync.role.value === 'follower' && sync.isLive.value)
+const needsRoomCode = computed(
+  () =>
+    !isRemoteFollower.value ||
+    showSwitchForm.value ||
+    sync.roomStatus.value === 'ended' ||
+    sync.roomStatus.value === 'idle'
+)
 
 const roundRateShort = computed(() => {
   const round = store.currentRound
@@ -166,122 +198,147 @@ const toggleMute = () => {
 </script>
 
 <template>
-  <div class="min-h-screen px-4 py-6 text-cloth-chalk sm:px-8">
-    <header class="flex flex-wrap items-end justify-between gap-4 border-b border-[color:var(--cloth-border)] pb-6">
-      <div class="tv-hero-panel rounded-2xl p-4 sm:p-5">
-        <p class="flex items-center gap-2 text-sm uppercase tracking-[0.35em] text-cloth-muted">
-          <AppIcon name="tv" class="text-cloth-accent" /> {{ config.public.brandName }} · табло
-        </p>
-        <h1 class="mt-2 font-display text-4xl font-extrabold sm:text-6xl">Колхоз · табло</h1>
-        <p class="mt-2 text-lg text-cloth-muted">
-          {{ modeText }}
-          <template v-if="store.mode === 'tournament' && store.currentRound">
-            · Тур {{ store.currentRound.number }}
-          </template>
-          <template v-if="sync.roomCode.value">
-            · комната <span class="text-cloth-accent">{{ sync.roomCode.value }}</span>
-          </template>
-        </p>
-
-        <div
-          v-if="!isRemoteFollower && !sync.roomCode.value"
-          class="mt-4 flex max-w-md flex-wrap items-end gap-2 rounded-xl border border-[color:var(--cloth-border)] bg-[color:var(--cloth-card)] p-3"
-        >
-          <label class="min-w-[10rem] flex-1 text-xs text-cloth-muted">
-            Код комнаты с телефона
-            <input
-              v-model="roomInput"
-              class="field-input mt-1 w-full uppercase tracking-widest"
-              maxlength="8"
-              placeholder="ABC123"
-              @keyup.enter="connectRoom(roomInput)"
-            />
-          </label>
-          <button
-            type="button"
-            class="btn-primary text-sm"
-            :disabled="joinBusy"
-            @click="connectRoom(roomInput)"
-          >
-            Подключить
-          </button>
-          <p v-if="sync.syncError.value" class="w-full text-xs text-red-500">{{ sync.syncError.value }}</p>
+  <div class="min-h-screen px-3 py-4 text-cloth-chalk sm:px-6 sm:py-5">
+    <header class="tv-topbar rounded-2xl px-3 py-2.5 sm:px-4 sm:py-3">
+      <div class="tv-topbar__row">
+        <div class="tv-topbar__brand">
+          <p class="tv-topbar__eyebrow">
+            <AppIcon name="tv" size="sm" />
+            {{ config.public.brandName }} · табло
+          </p>
+          <h1 class="tv-topbar__title">Колхоз · табло</h1>
+          <p class="tv-topbar__sub">
+            {{ modeText }}
+            <template v-if="store.mode === 'tournament' && store.currentRound">
+              · Тур {{ store.currentRound.number }}
+            </template>
+            <template v-if="sync.roomCode.value">
+              · <span class="font-semibold text-cloth-accent">{{ sync.roomCode.value }}</span>
+            </template>
+          </p>
         </div>
-        <p v-else-if="isRemoteFollower" class="mt-3 text-sm text-cloth-accent">
-          Онлайн-синк · обновление ~1 с · rev {{ sync.revision.value }}
-        </p>
-        <div v-if="store.mode === 'tournament'" class="mt-3 grid gap-2 sm:max-w-3xl sm:grid-cols-2">
-          <div
-            v-if="store.currentRound"
-            class="rounded-xl border border-cloth-accent/35 bg-cloth-accent/10 px-3 py-2 text-sm"
-          >
-            <p class="font-semibold text-cloth-accent">Ставки тура: {{ roundRateShort }}</p>
-            <p class="text-xs text-cloth-muted">формат групп 1-2-3</p>
+
+        <div class="tv-topbar__room">
+          <template v-if="needsRoomCode">
+            <div class="tv-topbar__room-row">
+              <label class="tv-topbar__room-label">
+                Код комнаты
+                <input
+                  v-model="roomInput"
+                  class="field-input"
+                  maxlength="8"
+                  placeholder="ABC123"
+                  autocomplete="off"
+                  @keyup.enter="connectRoom(roomInput)"
+                />
+              </label>
+              <button
+                type="button"
+                class="btn-primary text-sm"
+                :disabled="joinBusy"
+                @click="connectRoom(roomInput)"
+              >
+                {{ joinBusy ? '…' : 'Подключить' }}
+              </button>
+              <button
+                v-if="!isRemoteFollower"
+                type="button"
+                class="btn-ghost text-xs"
+                @click="loadLocalPreview"
+              >
+                Локально
+              </button>
+            </div>
+            <p v-if="sync.syncError.value" class="mt-1.5 text-xs text-red-500">{{ sync.syncError.value }}</p>
+            <p v-if="sync.roomStatus.value === 'ended'" class="tv-topbar__alert">
+              {{ sync.endedMessage.value || 'Встреча завершена.' }} Введите новый код.
+            </p>
+          </template>
+          <template v-else-if="isRemoteFollower">
+            <div class="tv-topbar__room-row">
+              <p class="tv-topbar__status">
+                Онлайн ·
+                <span class="text-cloth-accent">{{ sync.roomCode.value }}</span>
+                · № {{ sync.revision.value }}
+              </p>
+              <button type="button" class="btn-ghost text-xs" @click="showSwitchForm = true">
+                Сменить
+              </button>
+              <button type="button" class="btn-ghost text-xs" @click="disconnectBoard">
+                Отключить
+              </button>
+            </div>
+          </template>
+        </div>
+
+        <div class="tv-topbar__timer">
+          <div class="tv-topbar__timer-copy">
+            <p class="tv-topbar__timer-label">
+              <template v-if="timerStatus === 'paused'">пауза</template>
+              <template v-else-if="timerStatus === 'running'">идёт</template>
+              <template v-else>таймер</template>
+            </p>
+            <p class="tv-topbar__time">{{ remainingLabel }}</p>
           </div>
-          <div
-            class="rounded-xl border border-[color:var(--cloth-border)] bg-[color:var(--cloth-card)] px-3 py-2 text-sm"
-          >
-            <p>
-              Банк: <strong class="text-cloth-accent">{{ store.totalBank.toLocaleString('ru-RU') }} ₽</strong>
-            </p>
-            <p>
-              Призовые ({{ store.tournament.bank.prizePercent }}%):
-              <strong class="text-cloth-accent">{{ store.prizePool.toLocaleString('ru-RU') }} ₽</strong>
-            </p>
-            <p>Остаток: <strong>{{ store.houseCut.toLocaleString('ru-RU') }} ₽</strong></p>
+          <div v-if="canControlTimer && !isRemoteFollower" class="tv-topbar__timer-actions">
+            <button
+              v-if="timerStatus === 'idle'"
+              type="button"
+              class="btn-primary"
+              @click="startTimer"
+            >
+              Старт
+            </button>
+            <button
+              v-if="timerStatus === 'running'"
+              type="button"
+              class="btn-ghost"
+              @click="pauseTimer"
+            >
+              Пауза
+            </button>
+            <button
+              v-if="timerStatus === 'paused'"
+              type="button"
+              class="btn-primary"
+              @click="resumeTimer"
+            >
+              Далее
+            </button>
+            <button
+              v-if="timerStatus !== 'idle'"
+              type="button"
+              class="btn-ghost"
+              @click="stopTimer"
+            >
+              Стоп
+            </button>
+            <button type="button" class="btn-ghost" @click="toggleMute">
+              {{ store.tournament.timerMuted ? 'Звук' : 'Тише' }}
+            </button>
           </div>
         </div>
       </div>
-      <div class="tv-hero-panel min-w-[14rem] rounded-2xl p-4 text-right sm:p-5">
-        <p class="flex items-center justify-end gap-2 text-sm uppercase tracking-widest text-cloth-muted">
-          <AppIcon name="clock" size="sm" />
-          <template v-if="timerStatus === 'paused'">на паузе</template>
-          <template v-else-if="timerStatus === 'running'">идёт</template>
-          <template v-else>таймер</template>
-        </p>
-        <p class="font-display text-5xl font-bold tabular-nums text-cloth-accent sm:text-7xl">{{ remainingLabel }}</p>
 
-        <div v-if="canControlTimer && !isRemoteFollower" class="tv-timer-controls">
-          <button
-            v-if="timerStatus === 'idle'"
-            type="button"
-            class="btn-primary inline-flex items-center gap-1.5 text-sm"
-            @click="startTimer"
-          >
-            <AppIcon name="clock" size="sm" /> Старт
-          </button>
-          <button
-            v-if="timerStatus === 'running'"
-            type="button"
-            class="btn-ghost inline-flex items-center gap-1.5 text-sm"
-            @click="pauseTimer"
-          >
-            <AppIcon name="pause" size="sm" /> Пауза
-          </button>
-          <button
-            v-if="timerStatus === 'paused'"
-            type="button"
-            class="btn-primary inline-flex items-center gap-1.5 text-sm"
-            @click="resumeTimer"
-          >
-            <AppIcon name="play" size="sm" /> Продолжить
-          </button>
-          <button
-            v-if="timerStatus !== 'idle'"
-            type="button"
-            class="btn-ghost text-sm"
-            @click="stopTimer"
-          >
-            Стоп
-          </button>
-          <button type="button" class="btn-ghost text-sm" @click="toggleMute">
-            {{ store.tournament.timerMuted ? 'Вкл. звук' : 'Без звука' }}
-          </button>
+      <div v-if="store.mode === 'tournament'" class="tv-topbar__meta">
+        <div v-if="store.currentRound" class="tv-topbar__chip tv-topbar__chip--accent">
+          Ставки {{ roundRateShort }}
+          <span class="text-cloth-muted">· 1-2-3</span>
+        </div>
+        <div class="tv-topbar__chip">
+          Банк <strong>{{ store.totalBank.toLocaleString('ru-RU') }} ₽</strong>
+        </div>
+        <div class="tv-topbar__chip">
+          Приз {{ store.tournament.bank.prizePercent }}%
+          <strong>{{ store.prizePool.toLocaleString('ru-RU') }} ₽</strong>
+        </div>
+        <div class="tv-topbar__chip">
+          Остаток <strong>{{ store.houseCut.toLocaleString('ru-RU') }} ₽</strong>
         </div>
       </div>
     </header>
 
-    <div class="mt-8 grid gap-8 xl:grid-cols-[1.2fr_0.8fr]">
+    <div class="mt-5 grid gap-6 xl:grid-cols-[1.2fr_0.8fr]">
       <section>
         <h2 class="flex items-center gap-2 font-display text-2xl font-bold">
           <AppIcon name="ball" class="text-cloth-accent" /> Столы
@@ -334,15 +391,23 @@ const toggleMute = () => {
         </div>
         <div v-else class="mt-4 grid gap-3 sm:grid-cols-2">
           <article
-            v-for="player in store.activePlayers"
+            v-for="(player, index) in store.activePlayers"
             :key="player.id"
             class="card-surface rounded-3xl p-5"
           >
             <div class="flex items-center gap-3">
               <PlayerAvatar :name="player.name" />
-              <p class="text-xl font-bold">{{ player.name }}</p>
+              <div>
+                <p class="text-xl font-bold">{{ player.name }}</p>
+                <p v-if="index === 0" class="text-xs text-cloth-accent">разбив</p>
+              </div>
             </div>
-            <p class="mt-2 font-display text-4xl tabular-nums text-cloth-accent">{{ player.balance }}</p>
+            <p class="mt-2 text-sm text-cloth-muted">
+              пирамида: {{ store.casual.party ? (store.casual.party.rackPointsByPlayer[player.id] || 0) : 0 }} очк.
+            </p>
+            <p class="mt-1 font-display text-4xl tabular-nums text-cloth-accent">
+              {{ player.balance.toLocaleString('ru-RU') }} {{ store.casual.currencyLabel }}
+            </p>
           </article>
         </div>
       </section>
@@ -411,11 +476,12 @@ const toggleMute = () => {
       </NuxtLink>
       <p class="max-w-md text-sm text-cloth-muted">
         <template v-if="isRemoteFollower">
-          Табло подписано на комнату хоста. Счёт и столы обновляются автоматически.
+          Табло подписано на комнату ведущего. Когда ведущий нажмёт «Завершить встречу», код
+          перестанет действовать — здесь появится поле для нового кода.
         </template>
         <template v-else>
-          Локальный режим: изменения видны во вкладках этого браузера. Для другого устройства
-          откройте синк на пульте и введите код здесь.
+          Введите код комнаты с пульта. Локальный просмотр без кода показывает только данные
+          этого браузера (не чужую встречу).
         </template>
       </p>
     </footer>

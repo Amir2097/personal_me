@@ -24,28 +24,46 @@ export const buildKolkhozWorkbook = (state: KolkhozState): XLSX.WorkBook => {
     ['Игроков', state.players.length],
     ['Активных', state.players.filter((p) => p.status === 'active').length],
     ['Событий', state.events.length],
-    ['Текущий тур', state.tournament.rounds[state.tournament.currentRoundIndex]?.number ?? '—'],
-    ['Столов', state.tournament.tableCount],
-    ['Банк, ₽', bankTotal],
-    ['Призовые %', prizePercent],
-    ['Призовые, ₽', prizes],
-    ['Остаток, ₽', calcHouseCut(bankTotal, prizePercent)],
+    ...(state.mode === 'casual'
+      ? [
+          ['Цена шара, ₽', state.casual.ballPrice],
+          ['Партия №', state.casual.party?.number ?? '—']
+        ]
+      : [
+          ['Текущий тур', state.tournament.rounds[state.tournament.currentRoundIndex]?.number ?? '—'],
+          ['Столов', state.tournament.tableCount],
+          ['Банк, ₽', bankTotal],
+          ['Призовые %', prizePercent],
+          ['Призовые, ₽', prizes],
+          ['Остаток, ₽', calcHouseCut(bankTotal, prizePercent)]
+        ]),
     ['Обновлено', state.updatedAt]
   ]
   XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(summary), 'Сводка')
 
-  const players = [
-    ['Имя', 'Группа', 'Фора', 'Старт', 'Фишки', 'Внёс, ₽', 'Статус'],
-    ...state.players.map((p) => [
-      p.name,
-      groupLabel(p.category),
-      p.handicap,
-      p.startingStack,
-      p.balance,
-      playerPaid(buyIns, p.id),
-      p.status === 'eliminated' ? 'вне игры' : 'в игре'
-    ])
-  ]
+  const players =
+    state.mode === 'casual'
+      ? [
+          ['Имя', 'Фора', 'Баланс, ₽', 'Статус'],
+          ...state.players.map((p) => [
+            p.name,
+            p.handicap,
+            p.balance,
+            p.status === 'eliminated' ? 'вне игры' : 'в игре'
+          ])
+        ]
+      : [
+          ['Имя', 'Группа', 'Фора', 'Старт', 'Фишки', 'Внёс, ₽', 'Статус'],
+          ...state.players.map((p) => [
+            p.name,
+            groupLabel(p.category),
+            p.handicap,
+            p.startingStack,
+            p.balance,
+            playerPaid(buyIns, p.id),
+            p.status === 'eliminated' ? 'вне игры' : 'в игре'
+          ])
+        ]
   XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(players), 'Игроки')
 
   const tableRows: (string | number)[][] = [['Стол', '№ в зале', 'Место', 'Игрок', 'Группа', 'Фишки', 'Статус']]

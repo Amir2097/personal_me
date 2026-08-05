@@ -56,6 +56,45 @@ def test_save_list_load_delete_game(client):
     assert missing.status_code == 404
 
 
+def test_update_game_snapshot(client):
+    headers = _login(client)
+    state = {
+        "version": 1,
+        "mode": "tournament",
+        "players": [
+            {"id": "a", "name": "A", "balance": 20, "status": "active"},
+            {"id": "b", "name": "B", "balance": 0, "status": "eliminated"},
+        ],
+        "events": [],
+        "tournament": {
+            "kind": "organizer",
+            "currentRoundIndex": 2,
+            "rounds": [{"number": 1}, {"number": 2}, {"number": 3}],
+            "buyIns": [{"money": 500}, {"money": 500}],
+            "tables": [],
+        },
+        "casual": {"balls": [], "baseUnit": 1},
+        "updatedAt": "2026-01-01T00:00:00Z",
+    }
+    saved = client.post("/api/v1/kolkhoz/games", headers=headers, json={"state": state})
+    assert saved.status_code == 201
+    game_id = saved.json()["id"]
+
+    state["tournament"]["buyIns"].append({"money": 300})
+    state["events"] = [{"id": "e1"}, {"id": "e2"}]
+    updated = client.put(
+        f"/api/v1/kolkhoz/games/{game_id}",
+        headers=headers,
+        json={"state": state},
+    )
+    assert updated.status_code == 200
+    body = updated.json()
+    assert body["id"] == game_id
+    assert body["event_count"] == 2
+    assert body["bank_total"] == 1300
+    assert "тур 3" in body["title"].lower()
+
+
 def test_games_require_auth(client):
     assert client.get("/api/v1/kolkhoz/games").status_code == 401
     assert client.post("/api/v1/kolkhoz/games", json={"state": {"version": 1}}).status_code == 401

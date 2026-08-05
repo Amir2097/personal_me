@@ -7,8 +7,10 @@ const props = withDefaults(
     playerId: string
     /** How many history rows to show. */
     historyLimit?: number
+    /** Dense one-line controls for play board. */
+    compact?: boolean
   }>(),
-  { historyLimit: 5 }
+  { historyLimit: 5, compact: false }
 )
 
 const store = useKolkhozStore()
@@ -16,6 +18,7 @@ const bank = computed(() => store.tournament.bank)
 const currency = computed(() => bank.value.currencyLabel || '₽')
 
 const formOpen = ref(false)
+const historyOpen = ref(false)
 const kind = ref<BuyInKind>('rebuy')
 const money = ref(bank.value.rebuyPreset.money)
 const chips = ref(bank.value.rebuyPreset.chips)
@@ -27,11 +30,9 @@ const history = computed(() =>
 
 const presetFor = (next: BuyInKind) => {
   if (next === 'addon') return bank.value.addonPreset
-  // entry and rebuy share the same practical meaning in UI — use rebuy preset.
   return bank.value.rebuyPreset
 }
 
-/** Open editor with preset defaults — user can change money/chips before saving. */
 const openForm = (next: BuyInKind) => {
   kind.value = next
   const preset = presetFor(next)
@@ -53,50 +54,58 @@ const submit = () => {
 </script>
 
 <template>
-  <div class="mt-2 space-y-2">
-    <p class="text-xs text-cloth-muted">
-      Внёс:
-      <span class="font-semibold text-cloth-accent">{{ paid.toLocaleString('ru-RU') }} {{ currency }}</span>
-    </p>
-    <div class="flex flex-wrap gap-1.5">
-      <button type="button" class="btn-ghost py-1 text-[11px]" @click="openForm('rebuy')">
+  <div :class="compact ? 'mt-1 space-y-1' : 'mt-2 space-y-2'">
+    <div class="flex flex-wrap items-center gap-1.5">
+      <span class="text-[11px] text-cloth-muted">
+        <template v-if="!compact">Внёс: </template>
+        <span class="font-semibold text-cloth-accent">{{ paid.toLocaleString('ru-RU') }} {{ currency }}</span>
+      </span>
+      <button type="button" class="btn-ghost !px-2 !py-0.5 text-[10px]" @click="openForm('rebuy')">
         + Докуп
       </button>
-      <button type="button" class="btn-ghost py-1 text-[11px]" @click="openForm('addon')">
+      <button type="button" class="btn-ghost !px-2 !py-0.5 text-[10px]" @click="openForm('addon')">
         + Дон
+      </button>
+      <button
+        v-if="history.length"
+        type="button"
+        class="text-[10px] text-cloth-muted underline-offset-2 hover:text-cloth-accent hover:underline"
+        @click="historyOpen = !historyOpen"
+      >
+        {{ historyOpen ? 'скрыть' : `записи (${history.length})` }}
       </button>
     </div>
 
-    <div v-if="formOpen" class="rounded-lg border border-[color:var(--cloth-border)] bg-[color:var(--cloth-input)] p-2">
+    <div
+      v-if="formOpen"
+      class="rounded-lg border border-[color:var(--cloth-border)] bg-[color:var(--cloth-input)] p-2"
+    >
       <p class="text-[11px] font-semibold text-cloth-accent">{{ buyInKindLabel(kind) }}</p>
-      <p class="mt-0.5 text-[10px] text-cloth-muted">
-        Значения из пресета — поменяйте сумму или фишки перед записью.
-      </p>
-      <div class="mt-2 grid grid-cols-2 gap-2">
-        <label class="text-[11px] text-cloth-muted">
+      <div class="mt-1.5 grid grid-cols-2 gap-2">
+        <label class="text-[10px] text-cloth-muted">
           Сумма, {{ currency }}
-          <input v-model.number="money" type="number" min="0" class="field-input mt-0.5 w-full py-1" />
+          <input v-model.number="money" type="number" min="0" class="field-input mt-0.5 w-full !py-1" />
         </label>
-        <label class="text-[11px] text-cloth-muted">
+        <label class="text-[10px] text-cloth-muted">
           Фишки
-          <input v-model.number="chips" type="number" min="0" class="field-input mt-0.5 w-full py-1" />
+          <input v-model.number="chips" type="number" min="0" class="field-input mt-0.5 w-full !py-1" />
         </label>
       </div>
-      <div class="mt-2 flex gap-2">
-        <button type="button" class="btn-primary flex-1 py-1 text-xs" @click="submit">Записать</button>
-        <button type="button" class="btn-ghost py-1 text-xs" @click="formOpen = false">Отмена</button>
+      <div class="mt-1.5 flex gap-2">
+        <button type="button" class="btn-primary flex-1 !py-1 text-xs" @click="submit">Записать</button>
+        <button type="button" class="btn-ghost !py-1 text-xs" @click="formOpen = false">Отмена</button>
       </div>
     </div>
 
-    <ul v-if="history.length" class="space-y-1 text-[11px] text-cloth-muted">
+    <ul v-if="historyOpen && history.length" class="space-y-0.5 text-[10px] text-cloth-muted">
       <li
         v-for="item in history.slice(0, historyLimit)"
         :key="item.id"
-        class="flex items-start gap-2"
+        class="flex items-center gap-2"
       >
-        <span class="min-w-0 flex-1">
-          {{ buyInKindLabel(item.kind) }} · {{ item.money }} {{ currency }} / {{ item.chips }} фиш.
-          <span v-if="item.roundNumber">· тур {{ item.roundNumber }}</span>
+        <span class="min-w-0 flex-1 truncate">
+          {{ buyInKindLabel(item.kind) }} · {{ item.money }} {{ currency }} / {{ item.chips }}
+          <span v-if="item.roundNumber">· т{{ item.roundNumber }}</span>
         </span>
         <button
           type="button"

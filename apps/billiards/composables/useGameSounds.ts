@@ -42,6 +42,8 @@ const PATTERNS: Record<GameSoundKind, Tone[]> = {
 
 /** Shared across all composable callers (header, timer, plugin, TV). */
 let sharedCtx: AudioContext | null = null
+/** Chrome autoplay: AudioContext may only start after a user gesture. */
+let audioUnlocked = false
 
 /**
  * Lightweight WebAudio SFX for Kolkhoz (no asset files).
@@ -52,24 +54,33 @@ export const useGameSounds = () => {
 
   const ensureAudio = async () => {
     if (typeof window === 'undefined') return null
-    if (!sharedCtx) sharedCtx = new AudioContext()
+    // Do not construct AudioContext until a real user gesture unlocked audio.
+    if (!audioUnlocked && !sharedCtx) return null
+    if (!sharedCtx) {
+      sharedCtx = new AudioContext()
+    }
     if (sharedCtx.state === 'suspended') {
       try {
         await sharedCtx.resume()
       } catch {
-        /* ignore */
+        return null
       }
     }
-    return sharedCtx
+    audioUnlocked = sharedCtx.state === 'running'
+    return audioUnlocked ? sharedCtx : null
   }
 
+  /** Call only from click / pointer / key handlers — never from onMounted. */
   const unlock = () => {
+    if (typeof window === 'undefined') return
+    audioUnlocked = true
     void ensureAudio()
   }
 
   const play = async (kind: GameSoundKind) => {
     if (typeof window === 'undefined') return
     if (store.tournament.timerMuted) return
+    if (!audioUnlocked) return
     const ctx = await ensureAudio()
     if (!ctx) return
     const tones = PATTERNS[kind]
@@ -99,7 +110,7 @@ export const useGameSounds = () => {
       void play('score')
       return
     }
-    if (kind === 'penalty' || kind === 'fine_place') {
+    if (kind === 'penalty' || kind === 'fine_place' || kind === 'casual_foul') {
       void play('fine')
       return
     }

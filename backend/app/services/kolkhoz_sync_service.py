@@ -78,3 +78,15 @@ def push_state(
     session.commit()
     session.refresh(row)
     return row
+
+
+def close_session(session: Session, code: str, owner_username: str) -> None:
+    """Host ends the meeting — room code stops working for TVs."""
+    row = get_session_by_code(session, code)
+    if row.owner_username != owner_username:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Только создатель комнаты может завершить встречу.",
+        )
+    session.delete(row)
+    session.commit()

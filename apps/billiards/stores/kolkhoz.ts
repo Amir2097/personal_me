@@ -4,9 +4,9 @@ import {
   normalizeState,
   type BankState,
   type BuyInKind,
+  type CasualPenaltyConfig,
   type GameMode,
   type KolkhozState,
-  type Player,
   type PlayerCategory,
   type SpecialBall,
   type TournamentKind
@@ -19,7 +19,19 @@ import {
   splitPrizes,
   sumMoney
 } from '~/utils/bank'
-import { applyDropout, processScore, undoEvent } from '~/utils/scoring'
+import {
+  calcPartySettlement,
+  createCasualParty,
+  effectivePartyScore,
+  hasOpenPartyActivity,
+  partyPointsTotal,
+  partyTargetNorm,
+  potCasualBall,
+  settleCasualParty
+} from '~/utils/casual'
+import { computeDebtTransfers } from '~/utils/debts'
+import { applyCasualFoul } from '~/utils/casualPenalties'
+import { applyDropout, previousPlayerId, processScore, undoEvent } from '~/utils/scoring'
 import { claimTablePot, passTablePotMiss, placeTableFine, potForTable, returnTablePot } from '~/utils/pot'
 import { movePlayerToTable, seatPlayers, ensureTableSlots } from '~/utils/seating'
 
@@ -64,7 +76,33 @@ export const useKolkhozStore = defineStore('kolkhoz', {
         calcPrizePool(sumMoney(state.tournament.buyIns), state.tournament.bank.prizePercent),
         state.tournament.bank.prizePlaces
       ),
-    potByTableId: (state) => (tableId: string) => potForTable(state.tournament.pots, tableId)
+    potByTableId: (state) => (tableId: string) => potForTable(state.tournament.pots, tableId),
+    casualParty: (state) => state.casual.party,
+    casualPartyTotal: (state) => (state.casual.party ? partyPointsTotal(state.casual.party) : 0),
+    casualRackTotal: (state) => state.casual.party?.rackPointsTotal ?? 0,
+    casualSessionEnded: (state) => Boolean(state.casual.sessionEndedAt),
+    casualDebtTransfers: (state) => computeDebtTransfers(state.players),
+    casualPartyNorm: (state) => {
+      const party = state.casual.party
+      if (!party) return 0
+      const count = state.players.filter((player) => player.status === 'active').length
+      return partyTargetNorm(count)
+    },
+    casualProjected: (state) => (playerId: string) => {
+      const party = state.casual.party
+      if (!party || partyPointsTotal(party) <= 0) return 0
+      const ids = state.players.filter((player) => player.status === 'active').map((player) => player.id)
+      const line = calcPartySettlement(party, state.players, ids, state.casual.ballPrice).find(
+        (item) => item.playerId === playerId
+      )
+      return line?.deltaMoney ?? 0
+    },
+    casualEffectiveScore: (state) => (playerId: string) => {
+      const party = state.casual.party
+      const player = state.players.find((item) => item.id === playerId)
+      if (!party || !player) return 0
+      return effectivePartyScore(party, player)
+    }
   },
   actions: {
     hydrate() {
@@ -92,6 +130,7 @@ export const useKolkhozStore = defineStore('kolkhoz', {
       name: string
       category?: PlayerCategory
       handicap?: number
+      stakePrice?: number
       startingStack?: number
       /** Tournament: record initial entry buy-in (money). Chips come from startingStack / entry chips. */
       entryMoney?: number
@@ -101,16 +140,22 @@ export const useKolkhozStore = defineStore('kolkhoz', {
       if (!name) return
       if (this.players.length >= 48) return
       const chips =
-        input.entryChips ??
-        input.startingStack ??
-        this.tournament.bank.rebuyPreset.chips
+        this.mode === 'casual'
+          ? 0
+          : input.entryChips ??
+            input.startingStack ??
+            this.tournament.bank.rebuyPreset.chips
       const player: Player = {
         id: uid(),
         name,
         category: input.category ?? 2,
-        handicap: input.handicap ?? 1,
+        handicap: this.mode === 'casual' ? Math.max(0, Math.round(input.handicap ?? 0)) : input.handicap ?? 1,
+        stakePrice:
+          this.mode === 'casual' && input.stakePrice != null
+            ? Math.max(1, Math.round(input.stakePrice))
+            : undefined,
         startingStack: chips,
-        balance: chips,
+        balance: this.mode === 'casual' ? 0 : chips,
         status: 'active'
       }
       this.players.push(player)
@@ -131,13 +176,19 @@ export const useKolkhozStore = defineStore('kolkhoz', {
       }
       this.persist()
     },
-    updatePlayer(id: string, patch: Partial<Pick<Player, 'name' | 'category' | 'handicap' | 'startingStack' | 'balance'>>) {
+    updatePlayer(id: string, patch: Partial<Pick<Player, 'name' | 'category' | 'handicap' | 'startingStack' | 'balance' | 'stakePrice'>>) {
       const player = this.players.find((item) => item.id === id)
       if (!player) return
       if (patch.name !== undefined) player.name = patch.name.trim() || player.name
       if (patch.category !== undefined) player.category = patch.category
-      if (patch.handicap !== undefined) player.handicap = patch.handicap
+      if (patch.handicap !== undefined) {
+        player.handicap =
+          this.mode === 'casual' ? Math.max(0, Math.round(patch.handicap)) : patch.handicap
+      }
       if (patch.balance !== undefined) player.balance = patch.balance
+      if (patch.stakePrice !== undefined) {
+        player.stakePrice = Math.max(1, Math.round(patch.stakePrice))
+      }
       if (patch.startingStack !== undefined) {
         const diff = patch.startingStack - player.startingStack
         player.startingStack = patch.startingStack
@@ -232,23 +283,149 @@ export const useKolkhozStore = defineStore('kolkhoz', {
     playerBoughtChipsAmount(playerId: string) {
       return playerBoughtChips(this.tournament.buyIns, playerId)
     },
-    setCasualBaseUnit(value: number) {
-      this.casual.baseUnit = Math.max(0.1, value)
+    setCasualPenalties(patch: Partial<CasualPenaltyConfig>) {
+      if (patch.mode !== undefined) this.casual.penalties.mode = patch.mode
+      if (patch.usePersonalStake !== undefined) {
+        this.casual.penalties.usePersonalStake = patch.usePersonalStake
+      }
       this.persist()
+    },
+    setCasualBallPrice(value: number) {
+      this.casual.ballPrice = Math.max(1, Math.round(value))
+      this.persist()
+    },
+    /** @deprecated Use setCasualBallPrice */
+    setCasualBaseUnit(value: number) {
+      this.setCasualBallPrice(value)
     },
     updateBall(id: string, patch: Partial<SpecialBall>) {
       const ball = this.casual.balls.find((item) => item.id === id)
       if (!ball) return
-      Object.assign(ball, patch)
+      if (patch.label !== undefined) ball.label = patch.label
+      if (patch.color !== undefined) ball.color = patch.color
+      if (patch.price !== undefined) ball.price = Math.round(patch.price)
+      if (patch.partyRole !== undefined) ball.partyRole = patch.partyRole === 'extra' ? 'extra' : 'rack'
       this.persist()
     },
     addBall(ball?: Partial<SpecialBall>) {
       this.casual.balls.push({
         id: uid(),
         label: ball?.label || 'Шар',
-        multiplier: ball?.multiplier ?? 1,
-        color: ball?.color || '#94a3b8'
+        price: ball?.price ?? this.casual.ballPrice,
+        color: ball?.color || '#94a3b8',
+        partyRole: ball?.partyRole === 'extra' ? 'extra' : 'rack'
       })
+      this.persist()
+    },
+    removeBall(ballId: string) {
+      const ball = this.casual.balls.find((b) => b.id === ballId)
+      if (!ball) return
+      // Разрешаем удалять только пользовательские шары.
+      if (['standard', 'yellow', 'red', 'black'].includes(ballId)) return
+      // Настройки предполагаются до игры; если в партию уже есть активность — блокируем.
+      if (this.casual.party && hasOpenPartyActivity(this.casual.party)) return
+      this.casual.balls = this.casual.balls.filter((b) => b.id !== ballId)
+      this.persist()
+    },
+    ensureCasualParty() {
+      if (!this.casual.party) {
+        this.casual.party = createCasualParty(1)
+        this.persist()
+      }
+    },
+    potCasualBall(scorerId: string, ballId: string, tablePlayerIds: string[]) {
+      if (this.mode !== 'casual') throw new Error('Only for casual mode')
+      if (this.casual.sessionEndedAt) throw new Error('Встреча уже завершена.')
+      const ball = this.casual.balls.find((item) => item.id === ballId)
+      if (!ball) throw new Error(`Unknown ball: ${ballId}`)
+      this.ensureCasualParty()
+      const party = this.casual.party!
+      const prevId = previousPlayerId(tablePlayerIds, scorerId)
+      const prev = prevId ? this.players.find((player) => player.id === prevId) : null
+      if (!prev) throw new Error('Need at least 2 active players.')
+
+      const result = potCasualBall(
+        party,
+        ball,
+        this.casual.ballPrice,
+        tablePlayerIds,
+        scorerId,
+        this.casualTableId,
+        prev.name
+      )
+      this.casual.party = result.party
+      this.events.push(result.event)
+      this.persist()
+      return result
+    },
+    applyCasualFoul(offenderId: string, tablePlayerIds: string[]) {
+      if (this.mode !== 'casual') throw new Error('Only for casual mode')
+      if (this.casual.sessionEndedAt) throw new Error('Встреча уже завершена.')
+      this.ensureCasualParty()
+      const result = applyCasualFoul(
+        this.casual.party!,
+        this.players,
+        tablePlayerIds,
+        offenderId,
+        this.casual.penalties,
+        this.casual.ballPrice,
+        this.casualTableId
+      )
+      this.casual.party = result.party
+      this.players = result.players
+      this.events.push(result.event)
+      this.persist()
+      return result
+    },
+    settleCasualParty(tablePlayerIds: string[]) {
+      if (this.mode !== 'casual') throw new Error('Only for casual mode')
+      if (this.casual.sessionEndedAt) throw new Error('Встреча уже завершена.')
+      if (!this.casual.party) throw new Error('Партия ещё не начата.')
+      const result = settleCasualParty(
+        this.casual.party,
+        this.players,
+        tablePlayerIds,
+        this.casual.ballPrice,
+        this.casualTableId
+      )
+      this.players = result.players
+      this.casual.party = result.party
+      this.events.push(result.event)
+      this.persist()
+      return result
+    },
+    endCasualSession(tablePlayerIds: string[]) {
+      if (this.mode !== 'casual') throw new Error('Only for casual mode')
+      if (this.casual.sessionEndedAt) return
+
+      if (this.casual.party && hasOpenPartyActivity(this.casual.party)) {
+        this.settleCasualParty(tablePlayerIds)
+      }
+
+      const balances = Object.fromEntries(this.players.map((player) => [player.id, player.balance]))
+      const endedAt = new Date().toISOString()
+      this.casual.sessionEndedAt = endedAt
+      this.casual.party = null
+      this.events.push({
+        id: uid(),
+        at: endedAt,
+        mode: 'casual',
+        tableId: this.casualTableId,
+        scorerId: this.players[0]?.id || 'session',
+        ballId: 'session-end',
+        deltas: {},
+        kind: 'session_end',
+        note: 'Встреча завершена — итоговый расчёт.',
+        sessionBalances: balances
+      })
+      this.persist()
+    },
+    resetCasualMeeting() {
+      if (this.mode !== 'casual') return
+      this.players = this.players.map((player) => ({ ...player, balance: 0 }))
+      this.events = []
+      this.casual.party = null
+      this.casual.sessionEndedAt = null
       this.persist()
     },
     setTableCount(count: number) {
@@ -356,6 +533,10 @@ export const useKolkhozStore = defineStore('kolkhoz', {
     },
     score(tableId: string, scorerId: string, ballId: string, tablePlayerIds: string[]) {
       if (!this.mode) throw new Error('Mode is not selected')
+      if (this.mode === 'casual') {
+        this.potCasualBall(scorerId, ballId, tablePlayerIds)
+        return
+      }
       if (this.isOrganizer) throw new Error('Scoring is disabled in organizer mode')
       const result = processScore({
         mode: this.mode,
@@ -494,6 +675,58 @@ export const useKolkhozStore = defineStore('kolkhoz', {
             event.potSnapshot
           ]
         }
+      } else if (event.kind === 'party_settle') {
+        this.players = undoEvent(this.players, event)
+        if (event.partySnapshot) {
+          const orderMap = new Map(event.partySnapshot.playerOrder.map((id, index) => [id, index]))
+          this.players = [...this.players].sort(
+            (a, b) => (orderMap.get(a.id) ?? 999) - (orderMap.get(b.id) ?? 999)
+          )
+          this.casual.party = {
+            ...event.partySnapshot.party,
+            pointsByPlayer: { ...event.partySnapshot.party.pointsByPlayer }
+          }
+        }
+      } else if (
+        event.mode === 'casual' &&
+        event.kind === 'score' &&
+        event.partyPointsDelta != null &&
+        this.casual.party
+      ) {
+        const delta = event.partyPointsDelta
+        if (event.partyPointRole === 'extra') {
+          const nextExtra = { ...this.casual.party.extraPointsByPlayer }
+          nextExtra[event.scorerId] = (nextExtra[event.scorerId] || 0) - delta
+          if ((nextExtra[event.scorerId] || 0) <= 0) delete nextExtra[event.scorerId]
+          this.casual.party = { ...this.casual.party, extraPointsByPlayer: nextExtra }
+        } else {
+          const nextRack = { ...this.casual.party.rackPointsByPlayer }
+          nextRack[event.scorerId] = (nextRack[event.scorerId] || 0) - delta
+          if ((nextRack[event.scorerId] || 0) <= 0) delete nextRack[event.scorerId]
+          this.casual.party = {
+            ...this.casual.party,
+            ballIndex: Math.max(0, (event.partyBallIndex ?? this.casual.party.ballIndex) - 1),
+            rackPointsTotal: Math.max(0, this.casual.party.rackPointsTotal - delta),
+            rackPointsByPlayer: nextRack
+          }
+        }
+      } else if (event.kind === 'casual_foul') {
+        if (event.foulSnapshot?.playerBalances) {
+          this.players = this.players.map((player) => ({
+            ...player,
+            balance: event.foulSnapshot!.playerBalances![player.id] ?? player.balance
+          }))
+        }
+        if (event.foulSnapshot?.party) {
+          this.casual.party = {
+            ...event.foulSnapshot.party,
+            rackPointsByPlayer: { ...event.foulSnapshot.party.rackPointsByPlayer },
+            extraPointsByPlayer: { ...event.foulSnapshot.party.extraPointsByPlayer },
+            ballDebtByPlayer: { ...event.foulSnapshot.party.ballDebtByPlayer }
+          }
+        }
+      } else if (event.kind === 'session_end') {
+        this.casual.sessionEndedAt = null
       } else {
         this.players = undoEvent(this.players, event)
       }

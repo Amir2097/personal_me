@@ -96,7 +96,7 @@ const continueHref = computed(() => {
           <p class="mt-4 text-xs uppercase tracking-[0.2em] text-cloth-accent">Режим Б</p>
           <h3 class="mt-2 font-display text-2xl font-bold">Быстрый стол</h3>
           <p class="mt-3 text-sm text-cloth-chalk/70">
-            3–5 человек, цветные шары, фора. Одна партия без сетки туров.
+            2–5 человек, фора, цена шара. Партии по 15 шаров (последний ×2), расчёт от среднего.
           </p>
           <span class="mt-6 inline-flex items-center gap-1 text-sm font-semibold text-cloth-accent group-hover:underline">
             Начать <AppIcon name="arrow" size="sm" />
@@ -141,6 +141,21 @@ const continueHref = computed(() => {
           </div>
         </div>
       </div>
+
+      <section class="card-surface mt-6 p-6">
+        <div class="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <p class="text-xs uppercase tracking-[0.2em] text-cloth-accent">Академия</p>
+            <h3 class="mt-1 font-display text-2xl font-bold">Тренажёр русского бильярда</h3>
+            <p class="mt-2 text-sm text-cloth-chalk/75">
+              Интерактивные упражнения с SVG-схемами стола, траекториями и фиксацией результатов.
+            </p>
+          </div>
+          <NuxtLink to="/academy" class="btn-primary inline-flex items-center gap-2 text-sm">
+            <AppIcon name="play" size="sm" /> Открыть академию
+          </NuxtLink>
+        </div>
+      </section>
 
       <section class="card-surface mt-8 p-5">
         <div class="flex flex-wrap items-center justify-between gap-3">

@@ -120,10 +120,8 @@ export const processCasualScore = (
   }
   const target = active.find((player) => player.id === targetId)!
 
-  const sign = kind === 'penalty' || ball.multiplier < 0 ? -1 : 1
-  const absMultiplier = Math.abs(ball.multiplier)
-  // Amount based on the previous player's handicap (how much they owe when beaten).
-  const amount = baseUnit * absMultiplier * target.handicap * sign
+  const sign = kind === 'penalty' || ball.price < 0 ? -1 : 1
+  const amount = Math.abs(ball.price) * sign
 
   const deltas: Record<string, number> = {
     [targetId]: -amount,
@@ -140,7 +138,7 @@ export const processCasualScore = (
       scorerId,
       ballId: ball.id,
       deltas,
-      kind: ball.multiplier < 0 || kind === 'penalty' ? 'penalty' : 'score',
+      kind: ball.price < 0 || kind === 'penalty' ? 'penalty' : 'score',
       note: `vs ${target.name}`
     }
   }

@@ -70,6 +70,37 @@ const onLoginSuccess = async () => {
   await syncSession()
 }
 
+const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
+
+/** Wait until Nuxt billiards answers (avoid burning SSO codes on nginx boot page). */
+const waitForBilliardsReady = async () => {
+  const maxAttempts = 36 // ~3 minutes
+  for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+    openError.value = `Жду готовности Kolkhoz… (${attempt}/${maxAttempts})`
+    try {
+      const response = await fetch('/billiards/', {
+        method: 'GET',
+        cache: 'no-store',
+        redirect: 'manual'
+      })
+      const starting =
+        response.headers.get('x-service-starting') === '1' ||
+        response.status === 502 ||
+        response.status === 503 ||
+        response.status === 504
+      if (starting) {
+        await sleep(5000)
+        continue
+      }
+      // Any other HTTP response means Nuxt is listening (200, 302, opaque redirect, etc.).
+      return true
+    } catch {
+      await sleep(5000)
+    }
+  }
+  return false
+}
+
 const openBilliards = async () => {
   opening.value = true
   openError.value = ''
@@ -77,6 +108,13 @@ const openBilliards = async () => {
     if (!auth.isAuthenticated) {
       openError.value = 'Сначала войдите в аккаунт — раздел хобби открыт всем, а Kolkhoz только авторизованным.'
       showLogin.value = true
+      return
+    }
+
+    const ready = await waitForBilliardsReady()
+    if (!ready) {
+      openError.value =
+        'Kolkhoz ещё не поднялся. Проверьте `docker compose logs -f billiards` и попробуйте снова через минуту.'
       return
     }
 
@@ -93,6 +131,7 @@ const openBilliards = async () => {
     }
     const url = response.url || `${(config.public.siteUrl || '').replace(/\/$/, '')}/billiards/`
     window.open(url, '_blank', 'noopener,noreferrer')
+    openError.value = ''
   } catch (error) {
     openError.value = error instanceof Error ? error.message : 'Не удалось открыть Billiards.'
   } finally {
@@ -163,8 +202,9 @@ const openBilliards = async () => {
               </p>
               <p v-if="openError" class="mt-2 text-[11px] text-red-400">{{ openError }}</p>
               <p class="mt-2 text-[11px] text-terminal-gray">
-                Если видите 502 — контейнер <code class="text-terminal-green">billiards</code> ещё стартует
-                (<code class="text-terminal-green">docker compose logs -f billiards</code>).
+                Перед SSO кнопка ждёт, пока Nuxt на <code class="text-terminal-green">:3010</code> ответит —
+                иначе nginx отдаёт 502, пока идёт <code class="text-terminal-green">npm install</code>.
+                Логи: <code class="text-terminal-green">docker compose logs -f billiards</code>.
               </p>
             </button>
 
