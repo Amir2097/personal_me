@@ -49,3 +49,10 @@ npm run dev
 - `DELETE /api/v1/kolkhoz/games/{id}` — удалить
 
 На главной Kolkhoz и на пультах — блок **История партий**.
+
+## Академия — прогресс
+
+Результаты упражнений:
+
+- локально в `localStorage` (`billiards_academy_progress_v1`);
+- при входе через хаб — синк с `GET/PUT /api/v1/academy/progress` (новее по `updated_at` побеждает).

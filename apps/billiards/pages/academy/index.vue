@@ -4,14 +4,16 @@ import type { Exercise, ExerciseCategory, ExerciseLevel } from '~/types/academy'
 
 const exercises = exercisesRaw as Exercise[]
 const academy = useAcademyStore()
+const sync = useAcademySync()
 
 const levelFilter = ref<ExerciseLevel | 0>(0)
 const categoryFilter = ref<ExerciseCategory | 'all'>('all')
 const search = ref('')
 const sortBy = ref<'level_asc' | 'level_desc' | 'title' | 'progress_desc'>('level_asc')
 
-onMounted(() => {
+onMounted(async () => {
   academy.hydrate()
+  await sync.pullAndMerge()
 })
 
 const categories = computed(() => ['all', ...new Set(exercises.map((item) => item.category))] as Array<ExerciseCategory | 'all'>)
@@ -91,6 +93,22 @@ const progressFor = (exerciseId: string) => {
         <p class="mt-2 max-w-3xl text-sm text-cloth-chalk/80">
           Каталог упражнений с визуальными схемами, точкой удара и фиксацией результата по попыткам.
         </p>
+        <p class="mt-2 text-xs text-cloth-muted">
+          <template v-if="sync.syncStatus === 'synced'">Прогресс подтянут из аккаунта хаба.</template>
+          <template v-else-if="sync.syncStatus === 'syncing'">Синхронизация прогресса…</template>
+          <template v-else-if="sync.syncStatus === 'offline'">
+            Без входа прогресс только на этом устройстве.
+          </template>
+          <template v-else-if="sync.syncError">{{ sync.syncError }}</template>
+        </p>
+        <button
+          v-if="sync.isSignedIn"
+          type="button"
+          class="btn-ghost mt-3 text-xs"
+          @click="sync.pullAndMerge()"
+        >
+          Обновить с сервера
+        </button>
       </section>
 
       <section class="card-surface mt-6 p-4">

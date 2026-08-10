@@ -5,15 +5,19 @@ import type { Exercise } from '~/types/academy'
 
 const route = useRoute()
 const academy = useAcademyStore()
+const sync = useAcademySync()
 
 const exercises = exercisesRaw as Exercise[]
 const exercise = computed(() => exercises.find((item) => item.id === String(route.params.id)) || null)
 
 const made = ref(0)
 const attempts = ref(1)
+const saving = ref(false)
+const saveHint = ref('')
 
-onMounted(() => {
+onMounted(async () => {
   academy.hydrate()
+  await sync.pullAndMerge()
 })
 
 watch(
@@ -27,9 +31,19 @@ watch(
   { immediate: true }
 )
 
-const saveResult = () => {
+const saveResult = async () => {
   if (!exercise.value) return
-  academy.recordResult(exercise.value.id, made.value, attempts.value)
+  saving.value = true
+  saveHint.value = ''
+  try {
+    academy.recordResult(exercise.value.id, made.value, attempts.value)
+    const pushed = await sync.pushOne(exercise.value.id)
+    saveHint.value = pushed
+      ? 'Сохранено локально и в аккаунте хаба.'
+      : 'Сохранено на этом устройстве. Войдите, чтобы синхронизировать.'
+  } finally {
+    saving.value = false
+  }
 }
 
 const successRate = computed(() => {
@@ -75,6 +89,10 @@ const updatedAt = computed(() => {
             <p class="mt-1 text-xs text-cloth-muted">
               Цель упражнения: {{ exercise.target_reps }} попыток
             </p>
+            <p class="mt-1 text-xs text-cloth-muted">
+              <template v-if="sync.isSignedIn">Прогресс синхронизируется с аккаунтом хаба.</template>
+              <template v-else>Без входа результат хранится только на этом устройстве.</template>
+            </p>
 
             <label class="mt-4 block text-sm">
               Забито
@@ -90,7 +108,16 @@ const updatedAt = computed(() => {
               Точность: <strong class="text-cloth-accent">{{ successRate }}%</strong>
             </div>
 
-            <button type="button" class="btn-primary mt-4 w-full" @click="saveResult">Сохранить результат</button>
+            <button
+              type="button"
+              class="btn-primary mt-4 w-full"
+              :disabled="saving"
+              @click="saveResult"
+            >
+              {{ saving ? 'Сохранение…' : 'Сохранить результат' }}
+            </button>
+            <p v-if="saveHint" class="mt-2 text-xs text-cloth-muted">{{ saveHint }}</p>
+            <p v-if="sync.syncError" class="mt-2 text-xs text-amber-300">{{ sync.syncError }}</p>
             <p v-if="updatedAt" class="mt-2 text-xs text-cloth-muted">Обновлено: {{ updatedAt }}</p>
           </section>
         </div>
