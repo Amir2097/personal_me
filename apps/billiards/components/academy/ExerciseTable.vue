@@ -143,6 +143,11 @@ const ballFill = (ball: Ball) => {
         <p v-if="ghost" class="mt-2 text-xs text-cloth-muted">
           Фантом ({{ ghost.label || 'Ф' }}) — тот же радиус, что у шаров; стоит вплотную к прицельному на линии лузы.
         </p>
+        <ul class="mt-3 space-y-1 text-xs text-cloth-muted">
+          <li><span class="inline-block h-0.5 w-4 align-middle bg-white" /> белая — ход / прицел битка</li>
+          <li><span class="inline-block h-0.5 w-4 align-middle bg-[#facc15]" /> жёлтая — путь чужого</li>
+          <li><span class="inline-block h-0.5 w-4 align-middle bg-[#38bdf8]" /> синяя — путь битка после удара (свояк / выход)</li>
+        </ul>
       </div>
     </div>
   </div>
