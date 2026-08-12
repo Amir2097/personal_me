@@ -26,9 +26,9 @@ onMounted(() => {
         </span>
         <div>
           <p class="text-xs uppercase tracking-[0.28em] text-cloth-muted">{{ config.public.brandName }} · хобби</p>
-          <h1 class="font-display text-xl font-bold text-cloth-chalk sm:text-2xl">
-            Бильярд · Колхоз
-          </h1>
+          <NuxtLink to="/" class="font-display text-xl font-bold text-cloth-chalk sm:text-2xl hover:text-cloth-accent">
+            Бильярд
+          </NuxtLink>
         </div>
       </div>
       <nav class="flex flex-wrap items-center gap-2 text-sm">
@@ -71,7 +71,13 @@ onMounted(() => {
           </button>
         </ClientOnly>
         <NuxtLink to="/" class="btn-ghost inline-flex items-center gap-1 py-1.5 text-xs">
-          <AppIcon name="play" size="sm" /> Режимы
+          <AppIcon name="cue" size="sm" /> Главная
+        </NuxtLink>
+        <NuxtLink to="/kolkhoz" class="btn-ghost inline-flex items-center gap-1 py-1.5 text-xs">
+          <AppIcon name="chip" size="sm" /> Колхоз
+        </NuxtLink>
+        <NuxtLink to="/academy" class="btn-ghost inline-flex items-center gap-1 py-1.5 text-xs">
+          <AppIcon name="ball" size="sm" /> Академия
         </NuxtLink>
         <NuxtLink to="/tv" class="btn-ghost inline-flex items-center gap-1 py-1.5 text-xs">
           <AppIcon name="tv" size="sm" /> Табло

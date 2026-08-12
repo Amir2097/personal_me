@@ -63,6 +63,18 @@ export type Exercise = {
   trajectories: Trajectory[]
   /** Optional phantom ball showing where cue aims on a cut. */
   ghost_ball?: GhostBall
+  /**
+   * Expected cue-ball stop point (for exercises like clapshtoss).
+   * Coordinates use the same SVG coordinate system (0..100 x, 0..50 y).
+   */
+  expected_cue_stop?: Point2D
+  /**
+   * Allowed distance (in SVG units) from expected stop point to still count as a hit.
+   * Default suggestion: ~2
+   */
+  cue_stop_tolerance?: number
+  /** Enable interactive physics prototype for this exercise. */
+  physics_demo?: boolean
 }
 
 export type ProgressLog = {

@@ -292,7 +292,7 @@ const moveDown = (index: number) => {
         >
           <AppIcon name="play" size="sm" /> К столу
         </NuxtLink>
-        <NuxtLink to="/" class="btn-ghost">Назад</NuxtLink>
+        <NuxtLink to="/kolkhoz" class="btn-ghost">Назад</NuxtLink>
       </div>
       <p v-if="!canPlay" class="mt-2 text-xs text-amber-300">Нужно от 2 до 5 активных игроков.</p>
     </main>

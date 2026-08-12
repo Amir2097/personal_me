@@ -457,7 +457,7 @@ const startPlay = () => {
           <AppIcon name="play" size="sm" />
           {{ isOrganizer ? 'К пульту' : 'К игре' }}
         </button>
-        <NuxtLink to="/" class="btn-ghost">Назад</NuxtLink>
+        <NuxtLink to="/kolkhoz" class="btn-ghost">Назад</NuxtLink>
       </div>
     </main>
   </div>
