@@ -45,6 +45,15 @@ export const DEFAULT_TABLE: TableConfig = {
   stopSpeed: 0.35
 }
 
+/** Softer cloth + larger mouths — for academy demo animations. */
+export const DEMO_TABLE: TableConfig = {
+  ...DEFAULT_TABLE,
+  pocketRadius: 3.1,
+  restitution: 0.92,
+  rollingFriction: 11,
+  stopSpeed: 0.25
+}
+
 export type SimState = {
   balls: PhysBall[]
   time: number
@@ -108,10 +117,24 @@ const pocketBall = (ball: PhysBall, pocket: Point2D, time: number) => {
   ball.pocketedAt = time
 }
 
-const tryPocket = (ball: PhysBall, config: TableConfig, time: number) => {
+const nearestPocket = (ball: PhysBall, config: TableConfig) => {
+  let best = config.pockets[0]
+  let bestDist = Infinity
   for (const pocket of config.pockets) {
     const dist = hypot(ball.x - pocket.x, ball.y - pocket.y)
-    if (dist <= config.pocketRadius + ball.radius * 0.15) {
+    if (dist < bestDist) {
+      bestDist = dist
+      best = pocket
+    }
+  }
+  return { pocket: best, dist: bestDist }
+}
+
+const tryPocket = (ball: PhysBall, config: TableConfig, time: number) => {
+  const catchRadius = config.pocketRadius + ball.radius * 0.85
+  for (const pocket of config.pockets) {
+    const dist = hypot(ball.x - pocket.x, ball.y - pocket.y)
+    if (dist <= catchRadius) {
       pocketBall(ball, pocket, time)
       return true
     }
@@ -119,7 +142,27 @@ const tryPocket = (ball: PhysBall, config: TableConfig, time: number) => {
   return false
 }
 
-const resolveWall = (ball: PhysBall, config: TableConfig) => {
+const nearPocketMouth = (ball: PhysBall, config: TableConfig) => {
+  // Wide jaws so near-rail corner shots fall in instead of scraping the cushion.
+  const mouth = config.pocketRadius + ball.radius * 3.4
+  return config.pockets.some((pocket) => hypot(ball.x - pocket.x, ball.y - pocket.y) <= mouth)
+}
+
+const resolveWall = (ball: PhysBall, config: TableConfig, time: number) => {
+  // Near jaws: never bounce off the cushion — either fall in or keep rolling into the pocket.
+  if (nearPocketMouth(ball, config)) {
+    const outside =
+      ball.x < 0 ||
+      ball.x > config.width ||
+      ball.y < 0 ||
+      ball.y > config.height
+    if (outside) {
+      const { pocket } = nearestPocket(ball, config)
+      pocketBall(ball, pocket, time)
+    }
+    return
+  }
+
   const { width, height, restitution } = config
   const r = ball.radius
 
@@ -212,7 +255,10 @@ export const stepSimulation = (
 
   for (const ball of next.balls) {
     if (!ball.active) continue
-    resolveWall(ball, config)
+    tryPocket(ball, config, next.time)
+    if (!ball.active) continue
+    resolveWall(ball, config, next.time)
+    if (!ball.active) continue
     tryPocket(ball, config, next.time)
   }
 

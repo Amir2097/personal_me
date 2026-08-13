@@ -121,6 +121,8 @@ const onSvgClick = (ev: MouseEvent) => {
         />
       </g>
 
+      <DiagramAnnotations v-if="exercise.annotations?.length" :annotations="exercise.annotations" />
+
       <!-- Expected cue stop point -->
       <g v-if="expectedCueStop">
         <circle
@@ -213,6 +215,9 @@ const onSvgClick = (ev: MouseEvent) => {
           <li><span class="inline-block h-0.5 w-4 align-middle bg-white" /> белая — ход / прицел битка</li>
           <li><span class="inline-block h-0.5 w-4 align-middle bg-[#facc15]" /> жёлтая — путь чужого</li>
           <li><span class="inline-block h-0.5 w-4 align-middle bg-[#38bdf8]" /> синяя — путь битка после удара (свояк / выход)</li>
+          <li v-if="exercise.annotations?.length">
+            <span class="inline-block h-0.5 w-4 align-middle bg-[#fde68a]" /> жёлтая пунктирная — размер / зазор до борта
+          </li>
         </ul>
       </div>
     </div>

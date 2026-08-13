@@ -13,6 +13,7 @@
     ],
     "target_reps": 10,
     "physics_demo": true,
+    "physics_speed": 46,
     "cue_hit_point": {
       "offset_x": 0,
       "offset_y": 0,
@@ -363,6 +364,8 @@
       "Выполните плавный удар средней силы без винта."
     ],
     "target_reps": 10,
+    "physics_demo": true,
+    "physics_speed": 42,
     "cue_hit_point": {
       "offset_x": 0,
       "offset_y": 0,
@@ -503,6 +506,8 @@
       "После столкновения биток должен мгновенно остановиться на месте забитого шара без качения вперед или назад."
     ],
     "target_reps": 10,
+    "physics_demo": true,
+    "physics_speed": 38,
     "cue_hit_point": {
       "offset_x": 0,
       "offset_y": 0.3,
@@ -1241,6 +1246,8 @@
       "Цель: 8 из 10 чистых забитий без касания борта чужим до лузы."
     ],
     "target_reps": 10,
+    "physics_demo": true,
+    "physics_speed": 42,
     "cue_hit_point": {
       "offset_x": 0,
       "offset_y": 0,
@@ -1250,39 +1257,61 @@
       {
         "id": "cue",
         "type": "cue",
-        "x": 96,
-        "y": 40,
+        "x": 95.4,
+        "y": 38,
         "label": "Б"
       },
       {
         "id": "target_1",
         "type": "target",
-        "x": 96,
-        "y": 16,
+        "x": 97.0,
+        "y": 10.5,
         "label": "1"
+      }
+    ],
+    "ghost_ball": {
+      "x": 96.42,
+      "y": 13.65,
+      "label": "Ф"
+    },
+    "annotations": [
+      {
+        "from": {
+          "x": 98.6,
+          "y": 10.5
+        },
+        "to": {
+          "x": 100,
+          "y": 10.5
+        },
+        "label": "3–5 см",
+        "label_at": {
+          "x": 93.0,
+          "y": 8.8
+        }
       }
     ],
     "trajectories": [
       {
         "from": {
-          "x": 96,
-          "y": 40
+          "x": 95.4,
+          "y": 38
         },
         "to": {
-          "x": 96,
-          "y": 16
+          "x": 96.42,
+          "y": 13.65
         },
         "style": "solid",
         "color": "#ffffff"
       },
       {
         "from": {
-          "x": 96,
-          "y": 16
+          "x": 97.0,
+          "y": 10.5
         },
         "to": {
-          "x": 100,
-          "y": 0
+          "x": 98.75,
+          "y": 1.05
         },
         "style": "dashed",
         "color": "#facc15"

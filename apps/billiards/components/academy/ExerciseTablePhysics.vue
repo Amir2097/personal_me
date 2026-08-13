@@ -1,7 +1,8 @@
 <script setup lang="ts">
-import type { Ball, Exercise, Point2D } from '~/types/academy'
+import type { Ball, Exercise } from '~/types/academy'
 import {
   createSimState,
+  DEMO_TABLE,
   directionBetween,
   isSimulationIdle,
   stepSimulation,
@@ -9,23 +10,16 @@ import {
   type PhysBall,
   type SimState
 } from '~/utils/billiardPhysics'
+import { idealAimPoint, idealStrikeSpeed } from '~/utils/physicsAim'
 
 const props = defineProps<{
   exercise: Exercise
 }>()
 
-const emit = defineEmits<{
-  (e: 'targetPocketed'): void
-  (e: 'simulationEnd', payload: { pocketedTarget: boolean }): void
-}>()
-
-const svgRef = ref<SVGSVGElement | null>(null)
 const sim = ref<SimState | null>(null)
-const phase = ref<'idle' | 'aiming' | 'running'>('idle')
-const aimPoint = ref<Point2D | null>(null)
-const lastAimVector = ref<{ dx: number; dy: number; power: number } | null>(null)
+const phase = ref<'idle' | 'running'>('idle')
+const lastAimVector = ref<{ dx: number; dy: number } | null>(null)
 const cueStickProgress = ref(0)
-const pocketedTarget = ref(false)
 
 const ballRadius = 1.6
 const pockets = [
@@ -40,22 +34,32 @@ const pockets = [
 let rafId = 0
 let lastTs = 0
 let cueAnimId = 0
+let holdUntilTs = 0
+const HOLD_AFTER_MS = 1100
+/** Playback slower than realtime so the object ball rolls in calmly. */
+const DEMO_TIME_SCALE = 0.48
+
+const cancelRaf = (id: number) => {
+  if (!import.meta.client || !id) return
+  cancelAnimationFrame(id)
+}
 
 const cueBallSeed = computed(() => props.exercise.balls.find((ball) => ball.type === 'cue') || null)
-const targetBallSeed = computed(() => props.exercise.balls.find((ball) => ball.type === 'target') || null)
-
-const visibleTrajectories = computed(() => phase.value === 'idle' || phase.value === 'aiming')
+const aimPoint = computed(() => idealAimPoint(props.exercise))
+const ghost = computed(() => props.exercise.ghost_ball || null)
+const showReplayButton = computed(() => phase.value === 'idle')
+const visibleTrajectories = computed(() => phase.value === 'idle')
+const pocketedBalls = computed(() => sim.value?.balls.filter((ball) => !ball.active) || [])
 
 const ballFill = (ball: Ball | PhysBall) => (ball.type === 'cue' ? '#f8fafc' : '#f43f5e')
 
 const resetSim = () => {
-  cancelAnimationFrame(rafId)
-  cancelAnimationFrame(cueAnimId)
+  cancelRaf(rafId)
+  cancelRaf(cueAnimId)
   rafId = 0
   lastTs = 0
+  holdUntilTs = 0
   cueStickProgress.value = 0
-  pocketedTarget.value = false
-  aimPoint.value = null
   lastAimVector.value = null
   phase.value = 'idle'
   sim.value = createSimState(
@@ -65,7 +69,8 @@ const resetSim = () => {
       label: ball.label,
       x: ball.x,
       y: ball.y
-    }))
+    })),
+    DEMO_TABLE
   )
 }
 
@@ -76,54 +81,39 @@ watch(
 )
 
 onBeforeUnmount(() => {
-  cancelAnimationFrame(rafId)
-  cancelAnimationFrame(cueAnimId)
+  cancelRaf(rafId)
+  cancelRaf(cueAnimId)
 })
-
-const mapClientToSvg = (clientX: number, clientY: number): Point2D | null => {
-  const svg = svgRef.value
-  if (!svg) return null
-  try {
-    const pt = svg.createSVGPoint()
-    pt.x = clientX
-    pt.y = clientY
-    const ctm = svg.getScreenCTM()
-    if (!ctm) return null
-    const res = pt.matrixTransform(ctm.inverse())
-    return {
-      x: Math.max(0, Math.min(100, res.x)),
-      y: Math.max(0, Math.min(50, res.y))
-    }
-  } catch {
-    return null
-  }
-}
-
-const clampSpeed = (dragLen: number) => Math.min(58, Math.max(26, dragLen * 2.4))
 
 const runPhysicsLoop = (ts: number) => {
   if (!sim.value) return
+
+  if (holdUntilTs > 0) {
+    if (ts >= holdUntilTs) {
+      holdUntilTs = 0
+      resetSim()
+      return
+    }
+    rafId = requestAnimationFrame(runPhysicsLoop)
+    return
+  }
+
   if (!lastTs) lastTs = ts
-  const dt = Math.min(0.032, (ts - lastTs) / 1000)
+  const dt = Math.min(0.032, (ts - lastTs) / 1000) * DEMO_TIME_SCALE
   lastTs = ts
 
   let next = sim.value
-  const substeps = 3
+  const substeps = 4
   for (let i = 0; i < substeps; i += 1) {
-    next = stepSimulation(next, dt / substeps)
+    next = stepSimulation(next, dt / substeps, DEMO_TABLE)
   }
   sim.value = next
 
-  const target = next.balls.find((ball) => ball.type === 'target')
-  if (target && !target.active && !pocketedTarget.value) {
-    pocketedTarget.value = true
-    emit('targetPocketed')
-  }
-
-  if (isSimulationIdle(next)) {
-    phase.value = 'idle'
+  if (isSimulationIdle(next, DEMO_TABLE)) {
     lastTs = 0
-    emit('simulationEnd', { pocketedTarget: pocketedTarget.value })
+    // Keep the final frame (incl. pocketed balls) visible, then restore diagram.
+    holdUntilTs = ts + HOLD_AFTER_MS
+    rafId = requestAnimationFrame(runPhysicsLoop)
     return
   }
 
@@ -131,10 +121,11 @@ const runPhysicsLoop = (ts: number) => {
 }
 
 const playCueStrikeAnim = (onHit: () => void) => {
-  cancelAnimationFrame(cueAnimId)
+  if (!import.meta.client) return
+  cancelRaf(cueAnimId)
   cueStickProgress.value = 0
   const start = performance.now()
-  const duration = 180
+  const duration = 280
 
   const tick = (now: number) => {
     const t = Math.min(1, (now - start) / duration)
@@ -150,245 +141,180 @@ const playCueStrikeAnim = (onHit: () => void) => {
   cueAnimId = requestAnimationFrame(tick)
 }
 
-const fireStrike = (direction: Point2D, speed: number) => {
-  if (!sim.value || !cueBallSeed.value || phase.value === 'running') return
+const playExerciseAnimation = () => {
+  if (!import.meta.client) return
+  if (!sim.value || !cueBallSeed.value || !aimPoint.value || phase.value === 'running') return
+
   const cueId = cueBallSeed.value.id
+  const direction = directionBetween(cueBallSeed.value, aimPoint.value)
   const dirLen = Math.hypot(direction.x, direction.y)
   if (dirLen < 1e-6) return
+
   lastAimVector.value = {
     dx: direction.x / dirLen,
-    dy: direction.y / dirLen,
-    power: speed
+    dy: direction.y / dirLen
   }
   phase.value = 'running'
-  aimPoint.value = null
-  pocketedTarget.value = false
   lastTs = 0
 
+  const speed = idealStrikeSpeed(props.exercise)
   playCueStrikeAnim(() => {
     if (!sim.value) return
     strikeCueBall(sim.value, cueId, direction, speed)
-    cancelAnimationFrame(rafId)
+    cancelRaf(rafId)
     rafId = requestAnimationFrame(runPhysicsLoop)
   })
 }
 
-const onPointerDown = (ev: PointerEvent) => {
-  if (phase.value !== 'idle' || !cueBallSeed.value || !sim.value) return
-  const cue = sim.value.balls.find((ball) => ball.id === cueBallSeed.value!.id)
-  if (!cue?.active) return
-  const point = mapClientToSvg(ev.clientX, ev.clientY)
-  if (!point) return
-  const dist = Math.hypot(point.x - cue.x, point.y - cue.y)
-  if (dist > ballRadius * 3.5) return
-  phase.value = 'aiming'
-  aimPoint.value = point
-  ;(ev.currentTarget as Element)?.setPointerCapture?.(ev.pointerId)
-}
-
-const onPointerMove = (ev: PointerEvent) => {
-  if (phase.value !== 'aiming') return
-  const point = mapClientToSvg(ev.clientX, ev.clientY)
-  if (point) aimPoint.value = point
-}
-
-const onPointerUp = (ev: PointerEvent) => {
-  if (phase.value !== 'aiming' || !sim.value || !cueBallSeed.value) return
-  const cue = sim.value.balls.find((ball) => ball.id === cueBallSeed.value!.id)
-  const point = mapClientToSvg(ev.clientX, ev.clientY)
-  if (!cue || !point) {
-    phase.value = 'idle'
-    aimPoint.value = null
-    return
-  }
-
-  const dir = directionBetween({ x: cue.x, y: cue.y }, point)
-  const dragLen = Math.hypot(dir.x, dir.y)
-  if (dragLen < 2.5) {
-    phase.value = 'idle'
-    aimPoint.value = null
-    return
-  }
-
-  fireStrike(dir, clampSpeed(dragLen))
-  ;(ev.currentTarget as Element)?.releasePointerCapture?.(ev.pointerId)
-}
-
-const idealStrike = () => {
-  if (!cueBallSeed.value || !targetBallSeed.value || phase.value === 'running') return
-  const dir = directionBetween(cueBallSeed.value, targetBallSeed.value)
-  fireStrike(dir, 44)
-}
-
-const aimVector = computed(() => {
-  if (!sim.value || !aimPoint.value || phase.value !== 'aiming') return null
-  const cue = sim.value.balls.find((ball) => ball.type === 'cue')
-  if (!cue) return null
-  const dir = directionBetween({ x: cue.x, y: cue.y }, aimPoint.value)
-  const len = Math.hypot(dir.x, dir.y)
-  if (len < 1e-6) return null
-  return {
-    cx: cue.x,
-    cy: cue.y,
-    dx: dir.x / len,
-    dy: dir.y / len,
-    power: clampSpeed(len)
-  }
-})
-
 const cueStickLine = computed(() => {
-  if (!sim.value) return null
+  if (!sim.value || cueStickProgress.value <= 0 || !lastAimVector.value) return null
   const cue = sim.value.balls.find((ball) => ball.type === 'cue' && ball.active)
   if (!cue) return null
 
-  const vec = phase.value === 'aiming' ? aimVector.value : lastAimVector.value
-  if (!vec) return null
-
-  if (phase.value === 'aiming' && aimVector.value) {
-    const stickLen = 8 + aimVector.value.power * 0.22
-    return {
-      x1: cue.x - aimVector.value.dx * stickLen,
-      y1: cue.y - aimVector.value.dy * stickLen,
-      x2: cue.x - aimVector.value.dx * (stickLen * 0.25),
-      y2: cue.y - aimVector.value.dy * (stickLen * 0.25),
-      opacity: 0.95
-    }
+  const pull = 7 * cueStickProgress.value
+  return {
+    x1: cue.x - lastAimVector.value.dx * (10 + pull),
+    y1: cue.y - lastAimVector.value.dy * (10 + pull),
+    x2: cue.x - lastAimVector.value.dx * 2.2,
+    y2: cue.y - lastAimVector.value.dy * 2.2
   }
-
-  if (cueStickProgress.value > 0 && lastAimVector.value) {
-    const pull = 7 * cueStickProgress.value
-    return {
-      x1: cue.x - lastAimVector.value.dx * (10 + pull),
-      y1: cue.y - lastAimVector.value.dy * (10 + pull),
-      x2: cue.x - lastAimVector.value.dx * 2.2,
-      y2: cue.y - lastAimVector.value.dy * 2.2,
-      opacity: 0.85
-    }
-  }
-
-  return null
 })
 </script>
 
 <template>
   <div class="card-surface p-4">
-    <div class="mb-3 flex flex-wrap items-center justify-between gap-2">
-      <p class="text-xs uppercase tracking-[0.18em] text-cloth-accent">Физика · прототип</p>
-      <div class="flex flex-wrap gap-2">
-        <button type="button" class="btn-ghost text-xs" :disabled="phase === 'running'" @click="idealStrike">
-          Идеальный удар
-        </button>
-        <button type="button" class="btn-ghost text-xs" :disabled="phase === 'running'" @click="resetSim">
-          Сброс
-        </button>
-      </div>
-    </div>
+    <div class="relative overflow-hidden rounded-xl">
+      <svg
+        viewBox="0 0 100 50"
+        class="w-full rounded-xl border border-white/10 bg-[#0e3026]"
+        preserveAspectRatio="xMidYMid meet"
+      >
+        <defs>
+          <radialGradient id="clothGradientPhysics" cx="50%" cy="45%" r="65%">
+            <stop offset="0%" stop-color="#1e6b58" />
+            <stop offset="100%" stop-color="#0f3e32" />
+          </radialGradient>
+        </defs>
 
-    <svg
-      ref="svgRef"
-      viewBox="0 0 100 50"
-      class="w-full touch-none rounded-xl border border-white/10 bg-[#0e3026]"
-      preserveAspectRatio="xMidYMid meet"
-      :class="phase === 'aiming' ? 'cursor-crosshair' : phase === 'idle' ? 'cursor-pointer' : 'cursor-default'"
-      @pointerdown="onPointerDown"
-      @pointermove="onPointerMove"
-      @pointerup="onPointerUp"
-      @pointercancel="onPointerUp"
-    >
-      <defs>
-        <radialGradient id="clothGradientPhysics" cx="50%" cy="45%" r="65%">
-          <stop offset="0%" stop-color="#1e6b58" />
-          <stop offset="100%" stop-color="#0f3e32" />
-        </radialGradient>
-      </defs>
+        <rect x="0" y="0" width="100" height="50" rx="2" fill="url(#clothGradientPhysics)" />
 
-      <rect x="0" y="0" width="100" height="50" rx="2" fill="url(#clothGradientPhysics)" />
+        <line x1="20" y1="0" x2="20" y2="50" stroke="#d1fae5" stroke-opacity="0.3" stroke-width="0.35" />
+        <circle cx="75" cy="25" r="0.75" fill="#d1fae5" fill-opacity="0.6" />
 
-      <line x1="20" y1="0" x2="20" y2="50" stroke="#d1fae5" stroke-opacity="0.3" stroke-width="0.35" />
-      <circle cx="75" cy="25" r="0.75" fill="#d1fae5" fill-opacity="0.6" />
-
-      <g>
-        <circle
-          v-for="pocket in pockets"
-          :key="`p-${pocket.x}-${pocket.y}`"
-          :cx="pocket.x"
-          :cy="pocket.y"
-          r="2.3"
-          fill="#0b1210"
-        />
-      </g>
-
-      <g v-if="visibleTrajectories">
-        <line
-          v-for="(traj, idx) in exercise.trajectories"
-          :key="`t-${idx}`"
-          :x1="traj.from.x"
-          :y1="traj.from.y"
-          :x2="traj.to.x"
-          :y2="traj.to.y"
-          :stroke="traj.color"
-          stroke-width="0.55"
-          :stroke-dasharray="traj.style === 'dashed' ? '1.8 1.5' : undefined"
-          stroke-linecap="round"
-          opacity="0.55"
-        />
-      </g>
-
-      <g v-if="aimVector && phase === 'aiming'">
-        <line
-          :x1="aimVector.cx"
-          :y1="aimVector.cy"
-          :x2="aimVector.cx + aimVector.dx * (4 + aimVector.power * 0.35)"
-          :y2="aimVector.cy + aimVector.dy * (4 + aimVector.power * 0.35)"
-          stroke="#fef08a"
-          stroke-width="0.45"
-          stroke-linecap="round"
-          opacity="0.9"
-        />
-      </g>
-
-      <line
-        v-if="cueStickLine"
-        :x1="cueStickLine.x1"
-        :y1="cueStickLine.y1"
-        :x2="cueStickLine.x2"
-        :y2="cueStickLine.y2"
-        stroke="#fde68a"
-        stroke-width="0.55"
-        stroke-linecap="round"
-        :opacity="cueStickLine.opacity"
-      />
-
-      <g v-if="sim">
-        <g v-for="ball in sim.balls.filter((item) => item.active)" :key="ball.id">
+        <g>
           <circle
-            :cx="ball.x"
-            :cy="ball.y"
-            :r="ballRadius"
-            :fill="ballFill(ball)"
-            stroke="#ffffff"
-            stroke-opacity="0.5"
-            stroke-width="0.2"
+            v-for="pocket in pockets"
+            :key="`p-${pocket.x}-${pocket.y}`"
+            :cx="pocket.x"
+            :cy="pocket.y"
+            r="2.3"
+            fill="#0b1210"
           />
-          <circle :cx="ball.x - 0.45" :cy="ball.y - 0.45" r="0.35" fill="#fff" opacity="0.55" />
+        </g>
+
+        <g v-if="visibleTrajectories">
+          <line
+            v-for="(traj, idx) in exercise.trajectories"
+            :key="`t-${idx}`"
+            :x1="traj.from.x"
+            :y1="traj.from.y"
+            :x2="traj.to.x"
+            :y2="traj.to.y"
+            :stroke="traj.color"
+            stroke-width="0.55"
+            :stroke-dasharray="traj.style === 'dashed' ? '1.8 1.5' : undefined"
+            stroke-linecap="round"
+            opacity="0.55"
+          />
+        </g>
+
+        <DiagramAnnotations
+          v-if="visibleTrajectories && exercise.annotations?.length"
+          :annotations="exercise.annotations"
+        />
+
+        <g v-if="visibleTrajectories && ghost">
+          <circle
+            :cx="ghost.x"
+            :cy="ghost.y"
+            :r="ballRadius"
+            fill="#f8fafc"
+            fill-opacity="0.35"
+            stroke="#f8fafc"
+            stroke-opacity="0.95"
+            stroke-width="0.35"
+            stroke-dasharray="1.1 0.8"
+          />
           <text
-            :x="ball.x"
-            :y="ball.y + 0.45"
+            :x="ghost.x"
+            :y="ghost.y + 0.5"
             text-anchor="middle"
             font-size="1.5"
             font-weight="700"
-            :fill="ball.type === 'cue' ? '#111827' : '#fff'"
+            fill="#f8fafc"
+            fill-opacity="0.9"
           >
-            {{ ball.label }}
+            {{ ghost.label || 'Ф' }}
           </text>
         </g>
-      </g>
-    </svg>
 
-    <p class="mt-3 text-xs text-cloth-muted">
-      Потяните от битка в сторону удара (как кием). Длина жеста — сила. Или нажмите «Идеальный удар» для эталонной траектории.
-    </p>
-    <p v-if="pocketedTarget" class="mt-1 text-xs font-semibold text-emerald-300">Чужой шар в лузе.</p>
+        <line
+          v-if="cueStickLine"
+          :x1="cueStickLine.x1"
+          :y1="cueStickLine.y1"
+          :x2="cueStickLine.x2"
+          :y2="cueStickLine.y2"
+          stroke="#fde68a"
+          stroke-width="0.55"
+          stroke-linecap="round"
+          opacity="0.85"
+        />
+
+        <g v-if="sim">
+          <g v-for="ball in sim.balls.filter((item) => item.active)" :key="ball.id">
+            <circle
+              :cx="ball.x"
+              :cy="ball.y"
+              :r="ballRadius"
+              :fill="ballFill(ball)"
+              stroke="#ffffff"
+              stroke-opacity="0.5"
+              stroke-width="0.2"
+            />
+            <circle :cx="ball.x - 0.45" :cy="ball.y - 0.45" r="0.35" fill="#fff" opacity="0.55" />
+            <text
+              :x="ball.x"
+              :y="ball.y + 0.45"
+              text-anchor="middle"
+              font-size="1.5"
+              font-weight="700"
+              :fill="ball.type === 'cue' ? '#111827' : '#fff'"
+            >
+              {{ ball.label }}
+            </text>
+          </g>
+          <!-- Keep pocketed balls visible in the pocket until the hold ends. -->
+          <g v-for="ball in pocketedBalls" :key="`pocketed-${ball.id}`">
+            <circle
+              :cx="ball.x"
+              :cy="ball.y"
+              :r="ballRadius * 0.72"
+              :fill="ballFill(ball)"
+              opacity="0.75"
+            />
+          </g>
+        </g>
+      </svg>
+
+      <button
+        v-if="showReplayButton"
+        type="button"
+        class="absolute left-1/2 top-1/2 z-10 -translate-x-1/2 -translate-y-1/2 rounded-full border border-white/25 bg-black/35 px-4 py-2 text-sm font-semibold text-white/90 shadow-lg backdrop-blur-sm transition hover:border-white/40 hover:bg-black/45 hover:text-white"
+        @click="playExerciseAnimation"
+      >
+        Анимация упражнения
+      </button>
+    </div>
 
     <div class="mt-4 grid gap-4 md:grid-cols-[auto_1fr] md:items-center">
       <div class="panel-surface p-3">
@@ -407,9 +333,19 @@ const cueStickLine = computed(() => {
       </div>
       <div class="text-sm text-cloth-chalk/80">
         <p>{{ exercise.cue_hit_point.hint }}</p>
+        <p class="mt-2 text-xs text-cloth-muted">
+          Нажмите «Анимация упражнения», чтобы посмотреть эталонный удар. Результат тренировки отмечайте вручную справа.
+        </p>
+        <p v-if="ghost" class="mt-2 text-xs text-cloth-muted">
+          Фантом ({{ ghost.label || 'Ф' }}) — точка контакта при резке.
+        </p>
         <ul class="mt-3 space-y-1 text-xs text-cloth-muted">
           <li><span class="inline-block h-0.5 w-4 align-middle bg-white" /> белая — ход / прицел битка</li>
           <li><span class="inline-block h-0.5 w-4 align-middle bg-[#facc15]" /> жёлтая — путь чужого</li>
+          <li><span class="inline-block h-0.5 w-4 align-middle bg-[#38bdf8]" /> синяя — путь битка после удара</li>
+          <li v-if="exercise.annotations?.length">
+            <span class="inline-block h-0.5 w-4 align-middle bg-[#fde68a]" /> жёлтая пунктирная — размер / зазор до борта
+          </li>
         </ul>
       </div>
     </div>

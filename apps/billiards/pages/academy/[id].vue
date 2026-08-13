@@ -99,12 +99,6 @@ const updatedAt = computed(() => {
   return new Date(entry.updatedAt).toLocaleString('ru-RU')
 })
 
-const onPhysicsEnd = async (payload: { pocketedTarget: boolean }) => {
-  if (!exercise.value?.physics_demo) return
-  if (payload.pocketedTarget) {
-    await addAttempt('hit')
-  }
-}
 </script>
 
 <template>
@@ -127,7 +121,6 @@ const onPhysicsEnd = async (payload: { pocketedTarget: boolean }) => {
           v-if="exercise.physics_demo"
           :exercise="exercise"
           class="mt-5"
-          @simulationEnd="onPhysicsEnd"
         />
         <ExerciseTable
           v-else

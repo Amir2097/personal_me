@@ -49,6 +49,15 @@ export type Trajectory = {
   color: string
 }
 
+/** Dimension / callout line drawn with trajectories on the diagram. */
+export type DiagramAnnotation = {
+  from: Point2D
+  to: Point2D
+  label: string
+  /** Where to place the label text (SVG coords). */
+  label_at: Point2D
+}
+
 export type Exercise = {
   id: string
   title: string
@@ -61,6 +70,8 @@ export type Exercise = {
   cue_hit_point: CueHitPoint
   balls: Ball[]
   trajectories: Trajectory[]
+  /** Optional dimension lines / callouts on the table diagram. */
+  annotations?: DiagramAnnotation[]
   /** Optional phantom ball showing where cue aims on a cut. */
   ghost_ball?: GhostBall
   /**
@@ -75,6 +86,8 @@ export type Exercise = {
   cue_stop_tolerance?: number
   /** Enable interactive physics prototype for this exercise. */
   physics_demo?: boolean
+  /** Optional strike speed for physics demo (table units / second). */
+  physics_speed?: number
 }
 
 export type ProgressLog = {
