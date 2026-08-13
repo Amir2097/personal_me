@@ -191,6 +191,281 @@ html[data-theme='light'] .btn-primary {
   background: color-mix(in srgb, var(--cloth-card) 94%, transparent);
   box-shadow: 0 12px 30px rgba(0, 0, 0, 0.16);
   backdrop-filter: blur(8px);
+  color: var(--cloth-chalk);
+}
+
+.bracket-board {
+  width: 100%;
+}
+
+.bracket-board__viewport {
+  position: relative;
+  width: 100%;
+  height: min(72vh, 820px);
+  overflow: hidden;
+  border-radius: 1.1rem;
+  border: 1px solid color-mix(in srgb, var(--cloth-accent) 28%, var(--cloth-border));
+  background:
+    radial-gradient(ellipse at 20% 0%, color-mix(in srgb, var(--cloth-accent) 16%, transparent), transparent 48%),
+    radial-gradient(ellipse at 90% 100%, color-mix(in srgb, #1a4d3a 22%, transparent), transparent 42%),
+    linear-gradient(
+      165deg,
+      color-mix(in srgb, #0d1a14 88%, var(--cloth-card)),
+      color-mix(in srgb, #13241c 92%, var(--cloth-card)) 55%,
+      color-mix(in srgb, #0f1c16 90%, var(--cloth-card))
+    );
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.06),
+    0 16px 36px rgba(0, 0, 0, 0.22);
+  cursor: grab;
+  touch-action: pan-y;
+  user-select: none;
+}
+
+html[data-theme='light'] .bracket-board__viewport {
+  background:
+    radial-gradient(ellipse at 15% 0%, color-mix(in srgb, var(--cloth-accent) 18%, transparent), transparent 45%),
+    linear-gradient(165deg, #e7f0ea, #dce8e1 50%, #d4e2da);
+}
+
+.bracket-board__viewport--dragging {
+  cursor: grabbing;
+  touch-action: none;
+}
+
+.bracket-board__canvas {
+  position: relative;
+  transform-origin: 0 0;
+  will-change: transform;
+}
+
+.bracket-board__lines {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.bracket-board__line--winner {
+  stroke: color-mix(in srgb, var(--cloth-accent) 70%, #fff 10%);
+  stroke-width: 2.25;
+  opacity: 0.85;
+}
+
+.bracket-board__line--loser {
+  stroke: color-mix(in srgb, var(--cloth-accent) 55%, #888);
+  stroke-width: 1.75;
+  stroke-dasharray: 5 4;
+  opacity: 0.7;
+}
+
+.bracket-board__band-label {
+  position: absolute;
+  left: 8px;
+  margin: 0;
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: color-mix(in srgb, var(--cloth-accent) 80%, #fff);
+  pointer-events: none;
+}
+
+html[data-theme='light'] .bracket-board__band-label {
+  color: #6b4e12;
+}
+
+.bracket-board__col-header {
+  position: absolute;
+  width: 220px;
+  font-size: 0.82rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--cloth-accent);
+  pointer-events: none;
+}
+
+.bracket-board__round {
+  position: absolute;
+  width: 236px;
+  pointer-events: none;
+}
+
+.bracket-board__round-title {
+  margin: 0;
+  font-size: 0.8rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #f3efe4;
+}
+
+.bracket-board__round-title span {
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: color-mix(in srgb, var(--cloth-accent) 85%, #fff);
+}
+
+html[data-theme='light'] .bracket-board__round-title {
+  color: #15241c;
+}
+
+.bracket-board__round-sub {
+  margin: 0.2rem 0 0;
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: color-mix(in srgb, var(--cloth-accent) 75%, #c8d5cc);
+}
+
+html[data-theme='light'] .bracket-board__round-sub {
+  color: #5c6f63;
+}
+
+.bracket-board__card {
+  position: absolute;
+  min-height: 88px;
+  padding: 0.5rem 0.65rem 0.45rem;
+  text-align: left;
+  border-radius: 0.8rem;
+  border: 1px solid color-mix(in srgb, var(--cloth-accent) 30%, rgba(255, 255, 255, 0.12));
+  background:
+    linear-gradient(
+      160deg,
+      color-mix(in srgb, #1b2b22 70%, #fff 4%),
+      color-mix(in srgb, #121c17 88%, #000)
+    );
+  box-shadow:
+    0 10px 22px rgba(0, 0, 0, 0.28),
+    inset 0 1px 0 rgba(255, 255, 255, 0.07);
+  color: #eef5f0;
+  transition:
+    border-color 0.15s ease,
+    box-shadow 0.15s ease,
+    transform 0.15s ease;
+}
+
+html[data-theme='light'] .bracket-board__card {
+  background: linear-gradient(160deg, #ffffff, #f3f7f4);
+  color: #142019;
+  border-color: color-mix(in srgb, var(--cloth-accent) 35%, rgba(20, 40, 30, 0.12));
+  box-shadow: 0 8px 18px rgba(20, 40, 30, 0.1);
+}
+
+.bracket-board__card:hover {
+  border-color: color-mix(in srgb, var(--cloth-accent) 80%, transparent);
+  box-shadow:
+    0 12px 26px rgba(0, 0, 0, 0.32),
+    0 0 0 1px color-mix(in srgb, var(--cloth-accent) 35%, transparent);
+  transform: translateY(-1px);
+}
+
+.bracket-board__card--live {
+  border-color: color-mix(in srgb, #34d399 65%, transparent);
+  box-shadow: 0 0 0 1px color-mix(in srgb, #34d399 35%, transparent);
+}
+
+.bracket-board__card--focus {
+  box-shadow:
+    0 0 0 2px color-mix(in srgb, var(--cloth-accent) 70%, transparent),
+    0 10px 22px rgba(0, 0, 0, 0.22);
+}
+
+.bracket-board__card--final {
+  border-color: color-mix(in srgb, var(--cloth-accent) 75%, transparent);
+  background:
+    linear-gradient(
+      160deg,
+      color-mix(in srgb, var(--cloth-accent) 22%, #1b2b22),
+      color-mix(in srgb, #121c17 90%, #000)
+    );
+}
+
+html[data-theme='light'] .bracket-board__card--final {
+  background: linear-gradient(160deg, #fff8e8, #f4efe3);
+}
+
+.bracket-board__meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.4rem;
+  font-size: 0.68rem;
+  font-weight: 600;
+  color: color-mix(in srgb, #d7e2db 80%, transparent);
+}
+
+html[data-theme='light'] .bracket-board__meta {
+  color: #5a6d62;
+}
+
+.bracket-board__no {
+  color: var(--cloth-accent);
+  font-weight: 800;
+}
+
+.bracket-board__players {
+  margin-top: 0.4rem;
+  display: grid;
+  gap: 0.28rem;
+}
+
+.bracket-board__players p {
+  margin: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  font-size: 0.9rem;
+  font-weight: 700;
+}
+
+.bracket-board__score {
+  min-width: 1.1rem;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  color: var(--cloth-accent);
+}
+
+.bracket-board__score--win {
+  color: #4ade80;
+}
+
+.bracket-board__score--lose {
+  color: color-mix(in srgb, currentColor 45%, transparent);
+}
+
+.bracket-board__footer {
+  margin-top: 0.35rem;
+  padding-top: 0.3rem;
+  border-top: 1px solid color-mix(in srgb, var(--cloth-accent) 20%, transparent);
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  line-height: 1.25;
+}
+
+.bracket-board__place {
+  font-size: 0.68rem;
+  font-weight: 700;
+  color: color-mix(in srgb, var(--cloth-accent) 90%, #fff 10%);
+}
+
+html[data-theme='light'] .bracket-board__place {
+  color: #6b4e12;
+}
+
+.bracket-board__route {
+  font-size: 0.62rem;
+  font-weight: 600;
+  color: color-mix(in srgb, var(--cloth-muted) 90%, #fff);
+}
+
+html[data-theme='light'] .bracket-board__route {
+  color: #5a6d62;
+}
+
+.bracket-board__hint {
+  display: none;
 }
 
 .panel-surface {

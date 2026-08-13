@@ -76,6 +76,9 @@ onMounted(() => {
         <NuxtLink to="/kolkhoz" class="btn-ghost inline-flex items-center gap-1 py-1.5 text-xs">
           <AppIcon name="chip" size="sm" /> Колхоз
         </NuxtLink>
+        <NuxtLink to="/cup" class="btn-ghost inline-flex items-center gap-1 py-1.5 text-xs">
+          <AppIcon name="trophy" size="sm" /> Турнир
+        </NuxtLink>
         <NuxtLink to="/academy" class="btn-ghost inline-flex items-center gap-1 py-1.5 text-xs">
           <AppIcon name="ball" size="sm" /> Академия
         </NuxtLink>

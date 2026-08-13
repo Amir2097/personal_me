@@ -21,9 +21,10 @@ onMounted(() => {
           Бильярд
         </h2>
         <p class="mt-4 max-w-2xl text-base leading-relaxed text-cloth-chalk/75">
-          Два направления в одном сервисе: <strong class="text-cloth-chalk">тренажёр</strong> для отработки
-          техники и <strong class="text-cloth-chalk">колхоз</strong> для игры с друзьями — быстрый стол,
-          турнир, банк и табло.
+          Три направления в одном сервисе:
+          <strong class="text-cloth-chalk">тренажёр</strong>,
+          <strong class="text-cloth-chalk">колхоз</strong> и
+          <strong class="text-cloth-chalk">турнир</strong> на олимпийской сетке или системе до двух поражений.
         </p>
         <ClientOnly>
           <p v-if="clientReady && username" class="mt-3 inline-flex items-center gap-2 text-sm text-cloth-accent">
@@ -33,7 +34,7 @@ onMounted(() => {
         </ClientOnly>
       </section>
 
-      <div class="mt-10 grid gap-5 lg:grid-cols-2">
+      <div class="mt-10 grid gap-5 lg:grid-cols-3">
         <NuxtLink
           to="/academy"
           class="card-surface group block p-6 transition hover:border-cloth-accent/50 hover:bg-cloth-accent/5"
@@ -62,7 +63,7 @@ onMounted(() => {
           class="card-surface group block p-6 transition hover:border-cloth-accent/50 hover:bg-cloth-accent/5"
         >
           <div class="flex h-12 w-12 items-center justify-center rounded-2xl bg-cloth-accent/15 text-cloth-accent">
-            <AppIcon name="trophy" size="lg" />
+            <AppIcon name="chip" size="lg" />
           </div>
           <p class="mt-4 text-xs uppercase tracking-[0.2em] text-cloth-accent">Колхоз</p>
           <h3 class="mt-2 font-display text-2xl font-bold">Игра с друзьями</h3>
@@ -77,6 +78,29 @@ onMounted(() => {
           </ul>
           <span class="mt-6 inline-flex items-center gap-1 text-sm font-semibold text-cloth-accent group-hover:underline">
             Выбрать режим колхоза <AppIcon name="arrow" size="sm" />
+          </span>
+        </NuxtLink>
+
+        <NuxtLink
+          to="/cup"
+          class="card-surface group block p-6 transition hover:border-cloth-accent/50 hover:bg-cloth-accent/5"
+        >
+          <div class="flex h-12 w-12 items-center justify-center rounded-2xl bg-amber-500/15 text-amber-300">
+            <AppIcon name="trophy" size="lg" />
+          </div>
+          <p class="mt-4 text-xs uppercase tracking-[0.2em] text-cloth-accent">Турнир</p>
+          <h3 class="mt-2 font-display text-2xl font-bold">Олимпийская сетка</h3>
+          <p class="mt-3 text-sm text-cloth-chalk/70">
+            Классический плей-офф: олимпийская система или до двух поражений, счёт партий и шаров,
+            пульт матча и табло для зала.
+          </p>
+          <ul class="mt-4 space-y-1 text-xs text-cloth-muted">
+            <li>· сетка до 64 игроков, свободные места — пропуск тура</li>
+            <li>· партии и шары, таймер удара по желанию</li>
+            <li>· история именованных турниров</li>
+          </ul>
+          <span class="mt-6 inline-flex items-center gap-1 text-sm font-semibold text-cloth-accent group-hover:underline">
+            Открыть турнир <AppIcon name="arrow" size="sm" />
           </span>
         </NuxtLink>
       </div>
