@@ -94,8 +94,8 @@ const onStorage = (event: StorageEvent) => {
     <main class="mx-auto max-w-6xl px-4 py-6">
       <div class="flex flex-wrap items-center justify-between gap-3">
         <div class="flex flex-wrap gap-2">
-          <NuxtLink to="/cup" class="btn-ghost text-sm">← Турнир</NuxtLink>
-          <NuxtLink to="/cup/bracket" class="btn-ghost text-sm">Сетка</NuxtLink>
+          <NuxtLink to="/cup/bracket" class="btn-ghost text-sm">← Турнир</NuxtLink>
+          <NuxtLink to="/cup" class="btn-ghost text-sm">Список</NuxtLink>
         </div>
         <div class="flex flex-wrap items-center gap-2">
           <template v-if="sync.role.value === 'host' && sync.roomCode.value">

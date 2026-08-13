@@ -295,11 +295,37 @@ export const buildDoubleElimination = (inputPlayers: CupPlayer[]): BracketBuildR
     r1[i].nextSlot = i % 2 === 0 ? 'A' : 'B'
   }
 
-  // --- Нижняя: пары проигравших тура 1 ---
-  const lbR1: CupMatch[] = []
+  // --- Нижняя сетка ---
+  // BYE в первом туре не дают проигравшего: не резервируем под них слоты LB,
+  // иначе появляются матчи без соперника (баг на любом n ≠ 2^k, не только нечётном).
+  const isByeMatch = (match: CupMatch) => match.status === 'done' && !match.playerBId
+
+  const lbDrop: CupMatch[] = []
   for (let i = 0; i < r2Count; i += 1) {
-    lbR1.push(
-      pushMatch({
+    const feederA = r1[i * 2]
+    const feederB = r1[i * 2 + 1]
+    const liveFeeders = [feederA, feederB].filter((match) => !isByeMatch(match))
+
+    const drop = pushMatch({
+      id: cupUid('m'),
+      roundKey: r2Count === 1 ? 'lb-final' : 'lb-r2',
+      roundLabel: r2Count === 1 ? 'Нижняя · финал' : 'Нижняя · тур 2',
+      bracketSide: 'losers',
+      order: i,
+      playerAId: null,
+      playerBId: null,
+      nextMatchId: null,
+      nextSlot: null,
+      loserNextMatchId: null,
+      loserNextSlot: null
+    })
+    lbDrop.push(drop)
+
+    r2[i].loserNextMatchId = drop.id
+    r2[i].loserNextSlot = 'B'
+
+    if (liveFeeders.length === 2) {
+      const lb = pushMatch({
         id: cupUid('m'),
         roundKey: 'lb-r1',
         roundLabel: 'Нижняя · тур 1',
@@ -307,43 +333,32 @@ export const buildDoubleElimination = (inputPlayers: CupPlayer[]): BracketBuildR
         order: i,
         playerAId: null,
         playerBId: null,
-        nextMatchId: null,
-        nextSlot: null,
+        nextMatchId: drop.id,
+        nextSlot: 'A',
         loserNextMatchId: null,
         loserNextSlot: null
       })
-    )
-  }
-  for (let i = 0; i < r1.length; i += 1) {
-    const target = lbR1[Math.floor(i / 2)]
-    r1[i].loserNextMatchId = target.id
-    r1[i].loserNextSlot = i % 2 === 0 ? 'A' : 'B'
-  }
-
-  // --- Нижняя: победители нижней + проигравшие тура 2 ---
-  const lbDrop: CupMatch[] = []
-  for (let i = 0; i < r2Count; i += 1) {
-    lbDrop.push(
-      pushMatch({
-        id: cupUid('m'),
-        roundKey: r2Count === 1 ? 'lb-final' : 'lb-r2',
-        roundLabel: r2Count === 1 ? 'Нижняя · финал' : 'Нижняя · тур 2',
-        bracketSide: 'losers',
-        order: i,
-        playerAId: null,
-        playerBId: null,
-        nextMatchId: null,
-        nextSlot: null,
-        loserNextMatchId: null,
-        loserNextSlot: null
-      })
-    )
-  }
-  for (let i = 0; i < r2Count; i += 1) {
-    lbR1[i].nextMatchId = lbDrop[i].id
-    lbR1[i].nextSlot = 'A'
-    r2[i].loserNextMatchId = lbDrop[i].id
-    r2[i].loserNextSlot = 'B'
+      feederA.loserNextMatchId = lb.id
+      feederA.loserNextSlot = 'A'
+      feederB.loserNextMatchId = lb.id
+      feederB.loserNextSlot = 'B'
+    } else if (liveFeeders.length === 1) {
+      // Один реальный матч R1 + BYE: проигравший сразу в drop (слот A).
+      liveFeeders[0].loserNextMatchId = drop.id
+      liveFeeders[0].loserNextSlot = 'A'
+      for (const feeder of [feederA, feederB]) {
+        if (isByeMatch(feeder)) {
+          feeder.loserNextMatchId = null
+          feeder.loserNextSlot = null
+        }
+      }
+    } else {
+      // Оба R1 — BYE: в drop придёт только проигравший R2 → авто-BYE в re-entry.
+      feederA.loserNextMatchId = null
+      feederA.loserNextSlot = null
+      feederB.loserNextMatchId = null
+      feederB.loserNextSlot = null
+    }
   }
 
   // --- Возврат в основную сетку и олимпийка до финала ---
@@ -412,6 +427,8 @@ export const buildDoubleElimination = (inputPlayers: CupPlayer[]): BracketBuildR
     placePlayer(matches, match.nextMatchId, match.nextSlot, match.winnerId)
   }
 
+  resolveSinglePlayerByes(matches)
+
   for (const match of matches) {
     if (match.playerAId && match.playerBId && match.status === 'pending') {
       match.status = 'ready'
@@ -447,6 +464,44 @@ const placePlayer = (
   }
 }
 
+/** True if some unfinished match still feeds this slot. */
+const slotStillFed = (matches: CupMatch[], matchId: string, slot: MatchSlot) =>
+  matches.some(
+    (match) =>
+      match.status !== 'done' &&
+      ((match.nextMatchId === matchId && match.nextSlot === slot) ||
+        (match.loserNextMatchId === matchId && match.loserNextSlot === slot))
+  )
+
+/**
+ * Auto-complete matches that have exactly one player and no pending feeder
+ * for the empty slot (BYE through lower bracket after padding).
+ */
+const resolveSinglePlayerByes = (matches: CupMatch[]) => {
+  let changed = true
+  while (changed) {
+    changed = false
+    for (const match of matches) {
+      if (match.status === 'done') continue
+      const hasA = Boolean(match.playerAId)
+      const hasB = Boolean(match.playerBId)
+      if (hasA === hasB) continue
+      if (hasA && slotStillFed(matches, match.id, 'B')) continue
+      if (hasB && slotStillFed(matches, match.id, 'A')) continue
+
+      const winnerId = (match.playerAId || match.playerBId)!
+      if (!match.playerAId && match.playerBId) {
+        match.playerAId = match.playerBId
+        match.playerBId = null
+      }
+      match.winnerId = winnerId
+      match.status = 'done'
+      placePlayer(matches, match.nextMatchId, match.nextSlot, winnerId)
+      changed = true
+    }
+  }
+}
+
 export type AdvanceResult = {
   matches: CupMatch[]
   tournamentWinnerId: string | null
@@ -470,8 +525,7 @@ export const advanceWinner = (
     throw new Error('Победитель должен быть участником матча')
   }
 
-  const loserId =
-    winnerId === match.playerAId ? match.playerBId : match.playerAId
+  const loserId = winnerId === match.playerAId ? match.playerBId : match.playerAId
 
   match.winnerId = winnerId
   match.status = 'done'
@@ -483,6 +537,8 @@ export const advanceWinner = (
   if (format === 'de' && loserId) {
     placePlayer(matches, match.loserNextMatchId, match.loserNextSlot, loserId)
   }
+
+  resolveSinglePlayerByes(matches)
 
   let tournamentWinnerId: string | null = null
   let completed = false

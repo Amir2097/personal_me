@@ -107,6 +107,51 @@ describe('cupBracket DE', () => {
     expect(matches.every((match) => match.displayNo > 0)).toBe(true)
   })
 
+  it('does not leave permanent empty LB opponents for 3/5/6 players (BYE padding)', () => {
+    for (const count of [3, 5, 6]) {
+      const names = Array.from({ length: count }, (_, index) => `P${index + 1}`)
+      const { matches } = buildDoubleElimination(players(...names))
+
+      // No LB match may reserve a slot fed only by a BYE R1 (dead empty opponent).
+      const r1 = matches.filter((match) => match.roundLabel === 'Первый тур')
+      for (const match of r1) {
+        const isBye = match.status === 'done' && !match.playerBId
+        if (isBye) {
+          expect(match.loserNextMatchId).toBeNull()
+        }
+      }
+
+      // Every losers-bracket card that already has a player must either be ready/done
+      // or still waiting on a live feeder — never a permanent lone "×".
+      const losers = matches.filter((match) => match.bracketSide === 'losers')
+      for (const match of losers) {
+        const hasA = Boolean(match.playerAId)
+        const hasB = Boolean(match.playerBId)
+        if (hasA !== hasB) {
+          const emptySlot = hasA ? 'B' : 'A'
+          const pendingFeeder = matches.some(
+            (feeder) =>
+              feeder.status !== 'done' &&
+              ((feeder.nextMatchId === match.id && feeder.nextSlot === emptySlot) ||
+                (feeder.loserNextMatchId === match.id && feeder.loserNextSlot === emptySlot))
+          )
+          expect(pendingFeeder || match.status === 'done').toBe(true)
+        }
+      }
+    }
+  })
+
+  it('routes single live R1 loser straight into LB drop when paired with BYE', () => {
+    const { matches } = buildDoubleElimination(players('A', 'B', 'C'))
+    const liveR1 = matches.find(
+      (match) =>
+        match.roundLabel === 'Первый тур' && match.playerAId && match.playerBId
+    )!
+    const drop = matches.find((match) => match.roundKey === 'lb-final')!
+    expect(liveR1.loserNextMatchId).toBe(drop.id)
+    expect(matches.filter((match) => match.roundKey === 'lb-r1').length).toBe(0)
+  })
+
   it('lays out DE final as last upper column to the right', () => {
     const { matches } = buildDoubleElimination(players('A', 'B', 'C', 'D'))
     const layout = buildBracketLayout(matches, 'de')
