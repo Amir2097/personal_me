@@ -1,0 +1,128 @@
+# Standalone Цифровое Сукно (UI + API, without the DAUTOVTECH hub).
+# Главная — корень `/`, как на своём домене/поддомене.
+#
+#   docker compose -f docker-compose.billiards.yml up --build
+#   UI:  http://localhost:8080/          (nginx, как свой домен)
+#        http://localhost:3010/          (напрямую)
+#   API: http://localhost:8010/api/sukno/docs
+#
+# Не поднимать вместе с корневым docker-compose.yml: порты 80/8080 и 3010 пересекаются.
+
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: sukno-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: personal_me
+      POSTGRES_USER: app
+      POSTGRES_PASSWORD: app
+    volumes:
+      - sukno_postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5433:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U app -d personal_me"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+
+  billiards-api:
+    build:
+      context: ./apps/billiards-api
+    container_name: sukno-api
+    restart: unless-stopped
+    environment:
+      POSTGRES_DSN: postgresql+psycopg://app:app@db:5432/personal_me
+      JWT_SECRET_KEY: super-secret-change-me
+      SUKNO_ADMIN_KEY: sukno-dev-admin
+      ALLOW_LEGACY_ADMIN_KEY: "true"
+      ACCESS_TOKEN_EXPIRE_MINUTES: "10080"
+      REFRESH_TOKEN_EXPIRE_DAYS: "7"
+      FRONTEND_BASE_URL: http://localhost:8080
+      ALLOW_REGISTRATION: "true"
+      REQUIRE_EMAIL_VERIFICATION: "true"
+      INITIAL_ADMIN_USERNAME: admin
+      INITIAL_ADMIN_PASSWORD: admin123
+      INITIAL_ADMIN_EMAIL: admin@localhost
+      EXPOSE_RESET_TOKEN: "true"
+      EXPOSE_VERIFICATION_TOKEN: "true"
+      SMTP_HOST: mailpit
+      SMTP_PORT: "1025"
+      SMTP_FROM: noreply@localhost
+      SMTP_USE_TLS: "false"
+      COOKIE_SECURE: "false"
+      COOKIE_SAMESITE: lax
+      CORS_ORIGINS: http://localhost,http://localhost:3010,http://localhost:8080
+      UPLOADS_DIR: /app/uploads
+    volumes:
+      - sukno_uploads_data:/app/uploads
+    depends_on:
+      db:
+        condition: service_healthy
+      mailpit:
+        condition: service_started
+    ports:
+      - "8010:8010"
+
+  mailpit:
+    image: axllent/mailpit:latest
+    container_name: sukno-mailpit
+    restart: unless-stopped
+    ports:
+      - "8026:8025"
+      - "1026:1025"
+
+  billiards:
+    build:
+      context: ./apps/billiards
+    container_name: sukno-ui
+    restart: unless-stopped
+    environment:
+      HOST: 0.0.0.0
+      PORT: "3010"
+      NITRO_HOST: 0.0.0.0
+      NITRO_PORT: "3010"
+      NUXT_APP_BASE_URL: /
+      NUXT_PUBLIC_HUB_URL: ""
+      NUXT_PUBLIC_API_BASE_URL: http://localhost:8010
+      NUXT_PUBLIC_BRAND_NAME: Цифровое Сукно
+    ports:
+      - "3010:3010"
+    volumes:
+      - ./apps/billiards:/app
+      - sukno_node_modules:/app/node_modules
+      - sukno_nuxt:/app/.nuxt
+    depends_on:
+      - billiards-api
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "fetch('http://127.0.0.1:3010/').then((r)=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+      start_period: 180s
+
+  nginx:
+    image: nginx:1.27-alpine
+    container_name: sukno-nginx
+    restart: unless-stopped
+    depends_on:
+      - billiards
+      - billiards-api
+    ports:
+      - "8080:80"
+    volumes:
+      - ./nginx/sukno.conf:/etc/nginx/conf.d/default.conf:ro
+
+volumes:
+  sukno_postgres_data:
+  sukno_node_modules:
+  sukno_nuxt:
+  sukno_uploads_data:

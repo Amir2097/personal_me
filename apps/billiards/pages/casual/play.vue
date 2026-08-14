@@ -81,8 +81,7 @@ const formatPoints = (value: number) => value.toFixed(1).replace(/\.0$/, '')
 
 <template>
   <div>
-    <AppHeader />
-    <main class="mx-auto max-w-6xl px-4 py-6">
+    <main class="page-shell py-6">
       <div class="flex flex-wrap items-start justify-between gap-3">
         <div>
           <p class="flex items-center gap-2 text-xs uppercase tracking-[0.2em] text-cloth-accent">

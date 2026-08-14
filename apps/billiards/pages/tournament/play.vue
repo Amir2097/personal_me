@@ -102,9 +102,8 @@ const returnPotAt = (tableId: string) => {
 
 <template>
   <div>
-    <AppHeader />
     <RoundTimer />
-    <main class="mx-auto max-w-6xl px-4 py-6">
+    <main class="page-shell py-6">
       <div class="hero-strip flex flex-wrap items-start justify-between gap-3 rounded-2xl p-4 sm:p-5">
         <div class="min-w-[14rem]">
           <p class="flex items-center gap-2 text-xs uppercase tracking-[0.2em] text-cloth-accent">

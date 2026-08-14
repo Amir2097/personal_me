@@ -1,6 +1,7 @@
 <script setup lang="ts">
-const config = useRuntimeConfig()
-const { username } = useHubAuth()
+const { username, isHubLinked } = useHubAuth()
+const { appPath } = useAppBase()
+const { brandName, tagline, motd } = useSuknoSeo()
 const clientReady = ref(false)
 
 onMounted(() => {
@@ -10,28 +11,34 @@ onMounted(() => {
 
 <template>
   <div>
-    <AppHeader />
-    <main class="mx-auto max-w-6xl px-4 py-8 sm:py-12">
-      <section class="hero-surface rounded-2xl px-5 py-6 sm:px-8 sm:py-8">
-        <p class="flex items-center gap-2 text-sm text-cloth-muted">
-          <AppIcon name="cue" class="text-cloth-accent" />
-          Подсервис {{ config.public.brandName }}
-        </p>
-        <h2 class="mt-2 font-display text-3xl font-extrabold tracking-tight text-cloth-chalk sm:text-5xl">
-          Бильярд
-        </h2>
-        <p class="mt-4 max-w-2xl text-base leading-relaxed text-cloth-chalk/75">
-          Три направления в одном сервисе:
-          <strong class="text-cloth-chalk">тренажёр</strong>,
-          <strong class="text-cloth-chalk">колхоз</strong> и
-          <strong class="text-cloth-chalk">турнир</strong> на олимпийской сетке или системе до двух поражений.
-        </p>
-        <ClientOnly>
-          <p v-if="clientReady && username" class="mt-3 inline-flex items-center gap-2 text-sm text-cloth-accent">
-            <AppIcon name="user" size="sm" />
-            Вы вошли как <strong class="text-cloth-chalk">{{ username }}</strong>
-          </p>
-        </ClientOnly>
+    <main class="page-shell py-8 sm:py-12">
+      <section class="hero-surface px-6 py-10 sm:px-10 sm:py-14">
+        <div class="flex flex-col items-start gap-8 lg:flex-row lg:items-center lg:justify-between lg:gap-12">
+          <div class="min-w-0 flex-1">
+            <h1 class="sr-only">{{ brandName }}</h1>
+            <BrandLogo surface="felt" class="brand-logo brand-logo--hero" />
+            <p v-if="tagline" class="mt-4 max-w-2xl text-sm uppercase tracking-[0.18em] text-cloth-accent">
+              {{ tagline }}
+            </p>
+            <p v-if="motd" class="mt-3 max-w-2xl text-sm text-cloth-accent">{{ motd }}</p>
+            <p class="mt-5 max-w-2xl text-base leading-relaxed text-cloth-chalk/75">
+              Там, где зелёное сукно встречается с точным расчётом, рождается мастерство нового уровня.
+            </p>
+            <ClientOnly>
+              <p v-if="clientReady && isHubLinked && username" class="mt-3 inline-flex items-center gap-2 text-sm text-cloth-accent">
+                <AppIcon name="user" size="sm" />
+                Вы вошли как <strong class="text-cloth-chalk">{{ username }}</strong>
+              </p>
+            </ClientOnly>
+          </div>
+          <img
+            :src="appPath('brand/icon.png')"
+            :alt="brandName"
+            width="224"
+            height="224"
+            class="mx-auto h-40 w-40 shrink-0 rounded-[1.75rem] object-cover shadow-[0_24px_50px_rgba(0,0,0,0.28)] ring-1 ring-white/20 sm:h-48 sm:w-48 lg:mx-0 lg:h-56 lg:w-56"
+          />
+        </div>
       </section>
 
       <div class="mt-10 grid gap-5 lg:grid-cols-3">
@@ -39,7 +46,7 @@ onMounted(() => {
           to="/academy"
           class="card-surface group block p-6 transition hover:border-cloth-accent/50 hover:bg-cloth-accent/5"
         >
-          <div class="flex h-12 w-12 items-center justify-center rounded-2xl bg-emerald-500/15 text-emerald-300">
+          <div class="ball-icon ball-icon--felt">
             <AppIcon name="ball" size="lg" />
           </div>
           <p class="mt-4 text-xs uppercase tracking-[0.2em] text-cloth-accent">Академия</p>
@@ -62,7 +69,7 @@ onMounted(() => {
           to="/kolkhoz"
           class="card-surface group block p-6 transition hover:border-cloth-accent/50 hover:bg-cloth-accent/5"
         >
-          <div class="flex h-12 w-12 items-center justify-center rounded-2xl bg-cloth-accent/15 text-cloth-accent">
+          <div class="ball-icon ball-icon--indigo">
             <AppIcon name="chip" size="lg" />
           </div>
           <p class="mt-4 text-xs uppercase tracking-[0.2em] text-cloth-accent">Колхоз</p>
@@ -85,7 +92,7 @@ onMounted(() => {
           to="/cup"
           class="card-surface group block p-6 transition hover:border-cloth-accent/50 hover:bg-cloth-accent/5"
         >
-          <div class="flex h-12 w-12 items-center justify-center rounded-2xl bg-amber-500/15 text-amber-300">
+          <div class="ball-icon ball-icon--amber">
             <AppIcon name="trophy" size="lg" />
           </div>
           <p class="mt-4 text-xs uppercase tracking-[0.2em] text-cloth-accent">Турнир</p>
@@ -104,22 +111,6 @@ onMounted(() => {
           </span>
         </NuxtLink>
       </div>
-
-      <section class="card-surface mt-8 p-5">
-        <div class="flex flex-wrap items-center justify-between gap-3">
-          <div>
-            <h3 class="flex items-center gap-2 font-display text-lg font-bold">
-              <AppIcon name="tv" class="text-cloth-accent" /> Табло зала
-            </h3>
-            <p class="mt-1 text-sm text-cloth-muted">
-              Полноэкранный режим для телевизора: таймер тура, игроки, банк и события стола.
-            </p>
-          </div>
-          <NuxtLink to="/tv" class="btn-ghost inline-flex items-center gap-2 text-sm">
-            <AppIcon name="tv" size="sm" /> Открыть табло
-          </NuxtLink>
-        </div>
-      </section>
     </main>
   </div>
 </template>

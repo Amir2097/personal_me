@@ -45,7 +45,7 @@ const writeLocal = (items: CupHistorySummary[]) => {
 }
 
 export const useCupHistory = () => {
-  const { apiUrl, authHeaders, ensureAuthenticated, username } = useHubAuth()
+  const { apiUrl, authHeaders, withCredentials, ensureAuthenticated, username } = useHubAuth()
   const items = useState<CupHistorySummary[]>('cup-history-items', () => [])
   const error = useState<string>('cup-history-error', () => '')
   const saving = useState<boolean>('cup-history-saving', () => false)
@@ -58,6 +58,7 @@ export const useCupHistory = () => {
       try {
         await ensureAuthenticated()
         const res = await fetch(apiUrl('/api/v1/cup/tournaments?limit=40'), {
+          ...withCredentials,
           headers: { ...authHeaders() }
         })
         if (res.ok) {
@@ -105,10 +106,11 @@ export const useCupHistory = () => {
         await ensureAuthenticated()
         const res = await fetch(apiUrl('/api/v1/cup/tournaments'), {
           method: 'POST',
+          ...withCredentials,
           headers: { ...authHeaders(), 'Content-Type': 'application/json' },
           body: JSON.stringify({ state: snapshot, title: localEntry.title })
         })
-        if (!res.ok) error.value = 'Сохранено локально. Синхронизация с хабом не удалась.'
+        if (!res.ok) error.value = 'Сохранено локально. Синхронизация с облаком не удалась.'
       }
       await refresh()
       return true
@@ -124,6 +126,7 @@ export const useCupHistory = () => {
     if (!username.value) return null
     await ensureAuthenticated()
     const res = await fetch(apiUrl(`/api/v1/cup/tournaments/${id}`), {
+      ...withCredentials,
       headers: { ...authHeaders() }
     })
     if (!res.ok) return null

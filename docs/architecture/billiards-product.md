@@ -1,0 +1,61 @@
+# Цифровое Сукно
+
+The billiards app is **Цифровое Сукно** — a fixed brand, not a per-club
+white-label. Clubs will later get internal tools (staff, tables, history) under
+this same name. Do not add club rename or tenant slugs. Install SEO lives in
+`billiards-api` (`sukno_site_settings`), not hub `site_settings`.
+
+The hub is an optional identity provider. Play works without it. Cloud rooms
+and snapshots talk to `apps/billiards-api`.
+
+This file is the extraction map. Do not put Sukno game data into hub
+`site_settings`.
+
+## What stays in the hub
+
+- Personal developer portal, terminal, projects, OIDC for *this* site
+- Optional SSO: `go billiards` still mints a one-time code
+- Auth routes `/api/v1/auth/*`
+
+## What belongs to Цифровое Сукно
+
+| Concern | Now | Next |
+|---|---|---|
+| Play, brackets, TV | Local, no login | Same |
+| Brand | Fixed assets in `apps/billiards/public/brand/` | Same |
+| SEO / site copy | `/admin/seo`, table `sukno_site_settings` | Same |
+| Users | Device JWT, or hub username via SSO | Real operator login |
+| Sync rooms / history | `billiards-api` | Same service, own DB when a second install exists |
+| Public site | Hub: `/billiards/`. Own domain: `NUXT_APP_BASE_URL=/` | Subdomain with `nginx/sukno.conf` |
+
+`NUXT_APP_BASE_URL` switches the mount. On a real domain the home page is `/`,
+not `/billiards/`. TV links and favicons follow that base.
+
+## Auth
+
+1. Middleware hydrates SSO if present.
+2. Else a stored hub JWT is accepted by billiards-api (shared `JWT_SECRET_KEY`).
+3. Else the UI mints a device token: `POST /api/v1/billiards/auth/device`.
+4. TV `GET /sessions/{code}` stays public.
+5. Admin: `SUKNO_ADMIN_KEY` → `POST /api/v1/site/admin/unlock` → JWT `typ=admin`.
+   UI at `/admin` (or `/billiards/admin` on the hub).
+
+## Phases
+
+1. **Done.** App opens without hub redirect. Hub login is a button, not a gate.
+2. **Done.** Dedicated `billiards-api`. Device JWT. Brand fixed.
+3. **Done.** Own-domain path (`baseURL=/`), brand mark/logo/favicon.
+4. **This slice.** Sukno admin for SEO. Key-gated until operator accounts exist.
+5. **Club internals later.** Staff, tables, billing — not a second brand name.
+6. **Install package.** Compose with UI + API + postgres. No hub frontend.
+   Env: domain, SMTP, JWT secret. Still «Цифровое Сукно».
+
+Do not split the git repo before phase 6 has a second real install.
+
+## Standalone preview
+
+```bash
+docker compose -f docker-compose.billiards.yml up --build
+```
+
+UI at `http://localhost:8080/` (or `:3010/`), API at `http://localhost:8010`.

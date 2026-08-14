@@ -7,7 +7,7 @@ from fastapi import APIRouter, Depends, Query, Response
 from pydantic import BaseModel, Field
 from sqlmodel import Session
 
-from app.api.deps import get_current_username
+from app.api.deps import get_current_username, require_sync_actor
 from app.core.db import get_session
 from app.services import cup_history_service, cup_sync_service
 
@@ -59,10 +59,10 @@ class CupTournamentDetail(CupTournamentSummary):
 
 @router.post("/sessions", response_model=CupSessionCreateResponse, summary="Создать комнату турнира")
 def create_cup_session(
-    username: str = Depends(get_current_username),
+    actor=Depends(require_sync_actor),
     session: Session = Depends(get_session),
 ) -> CupSessionCreateResponse:
-    row = cup_sync_service.create_session(session, username)
+    row = cup_sync_service.create_session(session, actor.username)
     return CupSessionCreateResponse(code=row.code, revision=row.revision)
 
 
@@ -70,10 +70,10 @@ def create_cup_session(
 def push_cup_session(
     code: str,
     payload: CupSessionPushRequest,
-    username: str = Depends(get_current_username),
+    actor=Depends(require_sync_actor),
     session: Session = Depends(get_session),
 ) -> CupSessionPushResponse:
-    row = cup_sync_service.push_state(session, code, username, payload.state)
+    row = cup_sync_service.push_state(session, code, actor.username, payload.state)
     return CupSessionPushResponse(code=row.code, revision=row.revision, updated_at=row.updated_at)
 
 
@@ -95,10 +95,10 @@ def get_cup_session(
 @router.delete("/sessions/{code}", status_code=204, summary="Закрыть комнату турнира")
 def close_cup_session(
     code: str,
-    username: str = Depends(get_current_username),
+    actor=Depends(require_sync_actor),
     session: Session = Depends(get_session),
 ) -> Response:
-    cup_sync_service.close_session(session, code, username)
+    cup_sync_service.close_session(session, code, actor.username)
     return Response(status_code=204)
 
 

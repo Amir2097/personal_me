@@ -96,8 +96,7 @@ const startPlay = () => {
 
 <template>
   <div>
-    <AppHeader />
-    <main class="mx-auto max-w-6xl px-4 py-8">
+    <main class="page-shell py-8">
       <p class="flex items-center gap-2 text-xs uppercase tracking-[0.2em] text-cloth-accent">
         <AppIcon name="trophy" size="sm" /> Турнир
       </p>

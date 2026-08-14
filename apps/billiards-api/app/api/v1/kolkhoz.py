@@ -3,7 +3,7 @@
 from fastapi import APIRouter, Depends, Query, Response
 from sqlmodel import Session
 
-from app.api.deps import get_current_username
+from app.api.deps import get_current_username, require_sync_actor
 from app.core.db import get_session
 from app.schemas.kolkhoz import (
     KolkhozGameDetail,
@@ -25,11 +25,11 @@ router = APIRouter(prefix="/kolkhoz", tags=["kolkhoz"])
     summary="Создать комнату синхронизации",
 )
 def create_kolkhoz_session(
-    username: str = Depends(get_current_username),
+    actor=Depends(require_sync_actor),
     session: Session = Depends(get_session),
 ) -> KolkhozSessionCreateResponse:
     """Хост (телефон) создаёт код для TV."""
-    row = kolkhoz_sync_service.create_session(session, username)
+    row = kolkhoz_sync_service.create_session(session, actor.username)
     return KolkhozSessionCreateResponse(code=row.code, revision=row.revision)
 
 
@@ -41,11 +41,11 @@ def create_kolkhoz_session(
 def push_kolkhoz_session(
     code: str,
     payload: KolkhozSessionPushRequest,
-    username: str = Depends(get_current_username),
+    actor=Depends(require_sync_actor),
     session: Session = Depends(get_session),
 ) -> KolkhozSessionPushResponse:
     """Хост пушит полный JSON состояния Pinia."""
-    row = kolkhoz_sync_service.push_state(session, code, username, payload.state)
+    row = kolkhoz_sync_service.push_state(session, code, actor.username, payload.state)
     return KolkhozSessionPushResponse(
         code=row.code,
         revision=row.revision,
@@ -80,11 +80,11 @@ def get_kolkhoz_session(
 )
 def close_kolkhoz_session(
     code: str,
-    username: str = Depends(get_current_username),
+    actor=Depends(require_sync_actor),
     session: Session = Depends(get_session),
 ) -> Response:
     """Хост завершает трансляцию — код больше не действует."""
-    kolkhoz_sync_service.close_session(session, code, username)
+    kolkhoz_sync_service.close_session(session, code, actor.username)
     return Response(status_code=204)
 
 
@@ -113,7 +113,7 @@ def save_kolkhoz_game(
     username: str = Depends(get_current_username),
     session: Session = Depends(get_session),
 ) -> KolkhozGameSummary:
-    """Сохранить снимок текущей партии под аккаунтом хаба."""
+    """Сохранить снимок текущей партии под текущим оператором."""
     row = kolkhoz_history_service.save_game(session, username, payload.state, payload.title)
     return _to_summary(row)
 

@@ -9,7 +9,7 @@ const applyDom = (theme: ClothTheme) => {
 }
 
 export const useClothTheme = () => {
-  // Default theme is light unless user explicitly chose otherwise.
+  // Light "Daylight Lounge" is the primary theme; dark is the evening variant.
   const theme = useState<ClothTheme>('kolkhoz-theme', () => 'light')
 
   const hydrateTheme = () => {

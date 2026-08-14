@@ -1,100 +1,135 @@
 <script setup lang="ts">
 const config = useRuntimeConfig()
-const store = useKolkhozStore()
-const { username, ready } = useHubAuth()
+const suknoAuth = useSuknoAuth()
 const { theme, toggleTheme, hydrateTheme } = useClothTheme()
-const sounds = useGameSounds()
+const route = useRoute()
 
-const hubHref = computed(() => config.public.hubUrl || '/')
-const profileHref = computed(() => `${String(hubHref.value).replace(/\/$/, '')}/profile`)
-
-// Auth/theme from browser only — keep SSR markup stable to avoid hydration mismatch.
+const brandName = computed(() => String(config.public.brandName || 'Цифровое Сукно'))
 const clientReady = ref(false)
+const menuOpen = ref(false)
 
-onMounted(() => {
+const accountLabel = computed(() => {
+  const me = suknoAuth.profile.value
+  if (me?.source === 'account') return me.display_name || me.username
+  return ''
+})
+
+const avatarSrc = computed(() => suknoAuth.mediaUrl(suknoAuth.profile.value?.avatar_url))
+
+const navItems = [
+  { to: '/kolkhoz', label: 'Колхоз', icon: 'chip' as const },
+  { to: '/cup', label: 'Турнир', icon: 'trophy' as const },
+  { to: '/academy', label: 'Академия', icon: 'ball' as const }
+]
+
+const isActive = (path: string) => {
+  const current = route.path
+  if (path === '/') return current === '/'
+  return current === path || current.startsWith(`${path}/`)
+}
+
+const closeMenu = () => {
+  menuOpen.value = false
+}
+
+const onDocClick = (event: MouseEvent) => {
+  const target = event.target as HTMLElement | null
+  if (target?.closest('[data-account-menu]')) return
+  menuOpen.value = false
+}
+
+onMounted(async () => {
   hydrateTheme()
   clientReady.value = true
+  document.addEventListener('click', onDocClick)
+  try {
+    await suknoAuth.fetchMe()
+  } catch {
+    /* device / guest */
+  }
 })
+
+onBeforeUnmount(() => {
+  document.removeEventListener('click', onDocClick)
+})
+
+const logout = async () => {
+  closeMenu()
+  await suknoAuth.logout()
+  await navigateTo('/')
+}
 </script>
 
 <template>
   <header class="app-header">
-    <div class="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-3 px-4 py-4">
-      <div class="flex items-center gap-3">
-        <span class="flex h-10 w-10 items-center justify-center rounded-xl bg-cloth-accent/15 text-cloth-accent">
-          <AppIcon name="cue" size="lg" />
-        </span>
-        <div>
-          <p class="text-xs uppercase tracking-[0.28em] text-cloth-muted">{{ config.public.brandName }} · хобби</p>
-          <NuxtLink to="/" class="font-display text-xl font-bold text-cloth-chalk sm:text-2xl hover:text-cloth-accent">
-            Бильярд
-          </NuxtLink>
-        </div>
-      </div>
-      <nav class="flex flex-wrap items-center gap-2 text-sm">
-        <ClientOnly>
-          <a
-            v-if="clientReady && ready && username"
-            :href="profileHref"
-            class="inline-flex items-center gap-2 rounded-xl border border-cloth-accent/35 bg-cloth-accent/10 px-3 py-1.5 text-xs text-cloth-chalk transition hover:border-cloth-accent hover:bg-cloth-accent/20"
-            title="Профиль на хабе"
-          >
-            <PlayerAvatar :name="username" size="sm" />
-            <span class="min-w-0">
-              <span class="block text-[10px] uppercase tracking-wider text-cloth-muted">профиль</span>
-              <span class="block max-w-[9rem] truncate font-semibold text-cloth-accent">{{ username }}</span>
-            </span>
-          </a>
-          <span
-            v-else-if="clientReady && ready"
-            class="rounded-md border border-amber-400/30 px-2 py-1 text-[11px] text-amber-700"
-          >
-            не авторизован
-          </span>
-          <button
-            type="button"
-            class="btn-ghost inline-flex items-center gap-1 py-1.5 text-xs"
-            :title="store.tournament.timerMuted ? 'Включить звуки' : 'Выключить звуки'"
-            @click="store.setTimerMuted(!store.tournament.timerMuted); sounds.unlock()"
-          >
-            <AppIcon :name="store.tournament.timerMuted ? 'volume-off' : 'volume'" size="sm" />
-            {{ store.tournament.timerMuted ? 'Звук выкл' : 'Звук' }}
-          </button>
-          <button
-            type="button"
-            class="btn-ghost inline-flex items-center gap-1 py-1.5 text-xs"
-            :title="theme === 'dark' ? 'Светлая тема' : 'Тёмная тема'"
-            @click="toggleTheme"
-          >
-            <AppIcon :name="theme === 'dark' ? 'sun' : 'moon'" size="sm" />
-            {{ theme === 'dark' ? 'Светлая' : 'Тёмная' }}
-          </button>
-        </ClientOnly>
-        <NuxtLink to="/" class="btn-ghost inline-flex items-center gap-1 py-1.5 text-xs">
-          <AppIcon name="cue" size="sm" /> Главная
+    <div class="page-shell flex items-center justify-between gap-4 py-3">
+      <NuxtLink to="/" class="shrink-0 no-underline" :title="brandName">
+        <BrandLogo compact class="brand-logo" />
+      </NuxtLink>
+
+      <nav class="hidden items-center gap-1 md:flex" aria-label="Основное меню">
+        <NuxtLink
+          v-for="item in navItems"
+          :key="item.to"
+          :to="item.to"
+          class="header-nav-link"
+          :class="isActive(item.to) ? 'header-nav-link--active' : ''"
+        >
+          <AppIcon :name="item.icon" size="sm" />
+          {{ item.label }}
         </NuxtLink>
-        <NuxtLink to="/kolkhoz" class="btn-ghost inline-flex items-center gap-1 py-1.5 text-xs">
-          <AppIcon name="chip" size="sm" /> Колхоз
-        </NuxtLink>
-        <NuxtLink to="/cup" class="btn-ghost inline-flex items-center gap-1 py-1.5 text-xs">
-          <AppIcon name="trophy" size="sm" /> Турнир
-        </NuxtLink>
-        <NuxtLink to="/academy" class="btn-ghost inline-flex items-center gap-1 py-1.5 text-xs">
-          <AppIcon name="ball" size="sm" /> Академия
-        </NuxtLink>
-        <NuxtLink to="/tv" class="btn-ghost inline-flex items-center gap-1 py-1.5 text-xs">
-          <AppIcon name="tv" size="sm" /> Табло
-        </NuxtLink>
-        <a :href="hubHref" class="btn-ghost py-1.5 text-xs">← Хаб</a>
+      </nav>
+
+      <div class="flex items-center gap-2">
         <button
           type="button"
-          class="btn-ghost inline-flex items-center gap-1 py-1.5 text-xs"
-          :disabled="!store.events.length"
-          @click="store.undoLast()"
+          class="header-icon-btn"
+          :title="theme === 'dark' ? 'Светлая тема' : 'Тёмная тема'"
+          :aria-label="theme === 'dark' ? 'Светлая тема' : 'Тёмная тема'"
+          @click="toggleTheme"
         >
-          <AppIcon name="undo" size="sm" /> Отмена
+          <AppIcon :name="theme === 'dark' ? 'sun' : 'moon'" size="sm" />
         </button>
-      </nav>
+
+        <ClientOnly>
+          <template v-if="clientReady && suknoAuth.isAccountUser.value">
+            <div class="relative" data-account-menu>
+              <button
+                type="button"
+                class="inline-flex items-center gap-2 rounded-full border border-transparent py-1 pl-1 pr-2.5 text-sm text-cloth-chalk transition hover:bg-cloth-accent/10"
+                :aria-expanded="menuOpen"
+                @click="menuOpen = !menuOpen"
+              >
+                <PlayerAvatar :name="accountLabel || ''" :src="avatarSrc" size="sm" />
+                <span class="hidden max-w-[9rem] truncate font-medium sm:inline">{{ accountLabel }}</span>
+              </button>
+              <div
+                v-if="menuOpen"
+                class="absolute right-0 z-40 mt-2 w-48 overflow-hidden rounded-2xl bg-[color:var(--cloth-card-solid)] py-1 shadow-soft ring-1 ring-[color:var(--hairline)]"
+              >
+                <NuxtLink to="/profile" class="header-menu-item" @click="closeMenu">Профиль</NuxtLink>
+                <NuxtLink v-if="suknoAuth.isAdmin.value" to="/admin" class="header-menu-item" @click="closeMenu">
+                  Админка
+                </NuxtLink>
+                <button type="button" class="header-menu-item w-full text-left" @click="logout">Выйти</button>
+              </div>
+            </div>
+          </template>
+          <NuxtLink v-else-if="clientReady" to="/auth/login" class="btn-ghost py-1.5 text-xs">Войти</NuxtLink>
+        </ClientOnly>
+      </div>
     </div>
+
+    <nav class="page-shell flex gap-1 overflow-x-auto pb-3 md:hidden" aria-label="Разделы">
+      <NuxtLink
+        v-for="item in navItems"
+        :key="item.to"
+        :to="item.to"
+        class="header-nav-link shrink-0"
+        :class="isActive(item.to) ? 'header-nav-link--active' : ''"
+      >
+        {{ item.label }}
+      </NuxtLink>
+    </nav>
   </header>
 </template>

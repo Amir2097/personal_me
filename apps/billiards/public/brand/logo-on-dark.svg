@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 80" width="320" height="80">
+  <defs>
+    <radialGradient id="ballGlowDark" cx="35%" cy="35%" r="65%">
+      <stop offset="0%" stop-color="#10b981" />
+      <stop offset="60%" stop-color="#052e2b" />
+      <stop offset="100%" stop-color="#0b1311" />
+    </radialGradient>
+    <pattern id="gridPatternDark" width="6" height="6" patternUnits="userSpaceOnUse">
+      <path d="M 6 0 L 0 0 0 6" fill="none" stroke="rgba(16, 185, 129, 0.25)" stroke-width="0.8"/>
+    </pattern>
+  </defs>
+
+  <g transform="translate(10, 5)">
+    <circle cx="35" cy="35" r="32" fill="url(#gridPatternDark)" stroke="#10b981" stroke-width="1.5" opacity="0.8"/>
+    <circle cx="35" cy="35" r="26" fill="url(#ballGlowDark)" stroke="#10b981" stroke-width="1.5"/>
+    <line x1="35" y1="5" x2="35" y2="65" stroke="#facc15" stroke-width="1.5" stroke-dasharray="3,3" opacity="0.85"/>
+    <line x1="5" y1="35" x2="65" y2="35" stroke="#10b981" stroke-width="1" stroke-dasharray="2,2" opacity="0.6"/>
+    <circle cx="35" cy="35" r="4.5" fill="#facc15"/>
+    <circle cx="35" cy="35" r="8" fill="none" stroke="#facc15" stroke-width="1" opacity="0.8"/>
+  </g>
+
+  <text x="92" y="38" font-family="'Helvetica Neue', Arial, sans-serif" font-weight="800" font-size="19" fill="#f8fafc" letter-spacing="1">&$ </text>
+  <text x="92" y="58" font-family="'Helvetica Neue', Arial, sans-serif" font-weight="700" font-size="17" fill="#34d399" letter-spacing="3">!#</text>
+  <text x="92" y="70" font-family="monospace" font-size="7.5" fill="#facc15" letter-spacing="1.5">DIGITAL FELT PLATFORM</text>
+</svg>

@@ -49,19 +49,18 @@ const continueHref = computed(() => {
 
 <template>
   <div>
-    <AppHeader />
-    <main class="mx-auto max-w-6xl px-4 py-8 sm:py-10">
+    <main class="page-shell py-8 sm:py-10">
       <NuxtLink to="/" class="btn-ghost text-sm">← На главную</NuxtLink>
 
-      <section class="hero-surface mt-4 w-full rounded-2xl px-5 py-4 sm:px-6 sm:py-5">
-        <p class="flex items-center gap-2 text-sm text-cloth-muted">
+      <section class="hero-surface mt-4 w-full px-6 py-9 sm:px-10 sm:py-12">
+        <p class="section-eyebrow">
           <AppIcon name="chip" class="text-cloth-accent" />
           Колхоз · игра с друзьями
         </p>
-        <h2 class="mt-2 font-display text-3xl font-extrabold tracking-tight text-cloth-chalk sm:text-4xl">
+        <h2 class="mt-4 max-w-4xl font-display text-4xl font-bold text-cloth-chalk sm:text-5xl lg:text-6xl">
           Колхоз на зелёном сукне
         </h2>
-        <p class="mt-4 text-base leading-relaxed text-cloth-chalk/75">
+        <p class="mt-4 max-w-3xl text-base leading-relaxed text-cloth-chalk/75">
           Быстрый стол или турнир по турам. Счёт шаров, банк, призовые, рассадка и табло для зала.
           Выберите формат и продолжите текущую сессию, если она уже начата.
         </p>
@@ -75,7 +74,7 @@ const continueHref = computed(() => {
 
       <div class="mt-10 grid gap-5 md:grid-cols-2">
         <div class="card-surface p-6">
-          <div class="flex h-12 w-12 items-center justify-center rounded-2xl bg-cloth-accent/15 text-cloth-accent">
+          <div class="ball-icon ball-icon--amber">
             <AppIcon name="trophy" size="lg" />
           </div>
           <p class="mt-4 text-xs uppercase tracking-[0.2em] text-cloth-accent">Режим А</p>

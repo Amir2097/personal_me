@@ -74,23 +74,31 @@ const onSvgClick = (ev: MouseEvent) => {
     <svg
       ref="svgRef"
       viewBox="0 0 100 50"
-      class="w-full rounded-xl border border-white/10 bg-[#0e3026]"
+      class="exercise-table__svg"
       preserveAspectRatio="xMidYMid meet"
       :class="interactiveCueStop ? 'cursor-crosshair' : undefined"
       @click="onSvgClick"
     >
       <defs>
         <radialGradient id="clothGradient" cx="50%" cy="45%" r="65%">
-          <stop offset="0%" stop-color="#1e6b58" />
-          <stop offset="100%" stop-color="#0f3e32" />
+          <stop offset="0%" stop-color="var(--felt-hi)" />
+          <stop offset="100%" stop-color="var(--felt-lo)" />
         </radialGradient>
       </defs>
 
       <rect x="0" y="0" width="100" height="50" rx="2" fill="url(#clothGradient)" />
 
       <!-- Home line + pyramid spot -->
-      <line x1="20" y1="0" x2="20" y2="50" stroke="#d1fae5" stroke-opacity="0.3" stroke-width="0.35" />
-      <circle cx="75" cy="25" r="0.75" fill="#d1fae5" fill-opacity="0.6" />
+      <line
+        x1="20"
+        y1="0"
+        x2="20"
+        y2="50"
+        stroke="var(--felt-line)"
+        stroke-opacity="0.3"
+        stroke-width="0.35"
+      />
+      <circle cx="75" cy="25" r="0.75" fill="var(--felt-line)" fill-opacity="0.6" />
 
       <!-- Pockets -->
       <g>
@@ -100,7 +108,7 @@ const onSvgClick = (ev: MouseEvent) => {
           :cx="pocket.x"
           :cy="pocket.y"
           r="2.3"
-          fill="#0b1210"
+          fill="var(--felt-pocket)"
         />
       </g>
 

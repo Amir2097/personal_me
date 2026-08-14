@@ -35,12 +35,11 @@ onMounted(async () => {
   // Billiards bounced here with ?auth=required. If hub session is already OK,
   // clear the flag so it doesn't feel like an endless re-login loop.
   if (route.query.auth === 'required' && auth.isAuthenticated) {
-    openError.value =
-      'Сессия на хабе активна. Нажмите «открыть» ещё раз — Kolkhoz подхватит вход через SSO.'
+    openError.value = 'Сессия на хабе активна. Нажмите «открыть» — Kolkhoz подхватит вход через SSO.'
     await clearAuthQuery()
   } else if (route.query.auth === 'required' && !auth.isAuthenticated) {
     showLogin.value = true
-    openError.value = 'Для Kolkhoz Manager нужна авторизация.'
+    openError.value = 'Для облачного синка Kolkhoz войдите в хаб. Сам сервис уже открывается без входа.'
   }
 })
 
@@ -50,7 +49,7 @@ watch(
     if (!sessionChecked.value) return
     if (value === 'required' && !auth.isAuthenticated) {
       showLogin.value = true
-      openError.value = 'Для Kolkhoz Manager нужна авторизация.'
+      openError.value = 'Для облачного синка Kolkhoz войдите в хаб. Сам сервис уже открывается без входа.'
     }
   }
 )
@@ -106,8 +105,13 @@ const openBilliards = async () => {
   openError.value = ''
   try {
     if (!auth.isAuthenticated) {
-      openError.value = 'Сначала войдите в аккаунт — раздел хобби открыт всем, а Kolkhoz только авторизованным.'
-      showLogin.value = true
+      const ready = await waitForBilliardsReady()
+      if (!ready) {
+        openError.value =
+          'Бильярд ещё не поднялся. Проверьте `docker compose logs -f billiards` и попробуйте снова через минуту.'
+        return
+      }
+      window.open('/billiards/', '_blank', 'noopener,noreferrer')
       return
     }
 
@@ -150,24 +154,25 @@ const openBilliards = async () => {
           <h1 class="mt-2 text-xl">Хобби и подсервисы</h1>
           <p class="mt-2 max-w-2xl text-terminal-gray">
             Раздел {{ config.public.brandName || 'DAUTOVTECH' }} /hobby доступен без входа.
-            Запуск подсервисов (Kolkhoz Manager) — только после авторизации.
+            Бильярд открывается сразу: игра, сетка и табло локальные. Вход нужен только чтобы
+            подтянуть облачный синк через SSO.
           </p>
 
           <div
             v-if="sessionChecked && !isAuthenticated"
-            class="mt-4 rounded-lg border border-amber-500/40 bg-amber-500/10 px-4 py-3 text-xs text-amber-100"
+            class="mt-4 rounded-lg border border-terminal-green/30 bg-terminal-green/5 px-4 py-3 text-xs text-terminal-gray"
           >
-            <p class="font-medium text-amber-200">Нужна авторизация для запуска</p>
-            <p class="mt-1 text-amber-100/80">
-              Страницу хобби можно смотреть свободно. Чтобы открыть Kolkhoz Manager, войдите в аккаунт
-              (кнопка ниже или команда <code class="text-terminal-green">login</code> в терминале).
+            <p class="font-medium text-terminal-green">Можно открыть без входа</p>
+            <p class="mt-1">
+              Kolkhoz Manager работает как отдельный сервис. Если войти в хаб, откроется тот же
+              адрес с SSO — синк табло и история на сервере.
             </p>
             <button
               type="button"
-              class="mt-3 rounded border border-amber-400/50 px-3 py-1.5 text-amber-100 transition hover:bg-amber-400/10"
+              class="mt-3 rounded border border-terminal-green/50 px-3 py-1.5 text-terminal-green transition hover:bg-terminal-green/10"
               @click="showLogin = true"
             >
-              Войти
+              Войти для облака
             </button>
           </div>
 
@@ -177,7 +182,7 @@ const openBilliards = async () => {
           >
             Сессия:
             <span class="text-terminal-green">{{ auth.displayLabel }}</span>
-            — можно открыть Kolkhoz Manager.
+            — облачный синк через SSO доступен.
           </div>
 
           <div class="mt-6 grid gap-4 md:grid-cols-2">
@@ -188,17 +193,17 @@ const openBilliards = async () => {
               @click="openBilliards"
             >
               <p class="text-xs uppercase tracking-widest text-amber-300">
-                billiards · {{ isAuthenticated ? 'ready' : 'login required' }}
+                billiards · {{ isAuthenticated ? 'sso' : 'standalone' }}
               </p>
               <h2 class="mt-2 text-lg text-terminal-green">Kolkhoz Manager</h2>
               <p class="mt-2 text-xs leading-relaxed text-terminal-gray">
-                Русский бильярд «Колхоз»: быстрый стол с цветными шарами и турнир по турам
-                с категориями, тарифами, рассадкой и TV-табло. Offline-first.
+                Русский бильярд: быстрый стол, турнир по турам, олимпийская сетка и TV-табло.
+                Открывается без входа; хаб остаётся необязательным облаком.
               </p>
               <p class="mt-4 text-xs text-cyan-300">
-                <template v-if="opening">открываю через SSO…</template>
-                <template v-else-if="!isAuthenticated">войти и открыть /billiards/ →</template>
-                <template v-else>открыть /billiards/ →</template>
+                <template v-if="opening">открываю…</template>
+                <template v-else-if="!isAuthenticated">открыть /billiards/ →</template>
+                <template v-else>открыть через SSO →</template>
               </p>
               <p v-if="openError" class="mt-2 text-[11px] text-red-400">{{ openError }}</p>
               <p class="mt-2 text-[11px] text-terminal-gray">

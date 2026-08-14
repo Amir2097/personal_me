@@ -1,5 +1,5 @@
 /**
- * Sync academy progress with hub account.
+ * Sync academy progress with Цифровое Сукно API.
  * localStorage remains the offline cache; server is source of truth when signed in.
  */
 export const useAcademySync = () => {
@@ -15,7 +15,7 @@ export const useAcademySync = () => {
     const ok = await ensureAuthenticated()
     if (!ok) {
       academy.syncStatus = 'offline'
-      academy.syncError = 'Войдите через хаб, чтобы синхронизировать прогресс.'
+      academy.syncError = 'Прогресс на этом устройстве сохранён. Облако сейчас недоступно.'
       return false
     }
 

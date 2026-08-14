@@ -23,6 +23,40 @@ jobs:
       - name: Run pytest
         run: python -m pytest tests -q
 
+  billiards-api:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/billiards-api
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: apps/billiards-api/requirements-dev.txt
+      - name: Install dependencies
+        run: pip install -r requirements-dev.txt
+      - name: Run pytest
+        run: python -m pytest tests -q
+
+  billiards:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/billiards
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: apps/billiards/package-lock.json
+      - name: Install dependencies
+        run: npm install
+      - name: Run vitest
+        run: npm test
+
   frontend:
     runs-on: ubuntu-latest
     defaults:

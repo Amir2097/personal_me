@@ -85,21 +85,22 @@ const progressFor = (exerciseId: string) => {
 
 <template>
   <div>
-    <AppHeader />
-    <main class="mx-auto max-w-6xl px-4 py-6">
+    <main class="page-shell py-6">
       <NuxtLink to="/" class="btn-ghost text-sm">← На главную</NuxtLink>
 
-      <section class="hero-surface mt-4 rounded-2xl p-5">
-        <p class="text-xs uppercase tracking-[0.2em] text-cloth-accent">Академия</p>
-        <h2 class="mt-2 font-display text-3xl font-bold text-cloth-chalk">Тренажер русского бильярда</h2>
-        <p class="mt-2 max-w-3xl text-sm text-cloth-chalk/80">
+      <section class="hero-surface mt-4 px-6 py-9 sm:px-10 sm:py-12">
+        <p class="section-eyebrow">Академия</p>
+        <h2 class="mt-4 max-w-4xl font-display text-4xl font-bold text-cloth-chalk sm:text-5xl">
+          Тренажер русского бильярда
+        </h2>
+        <p class="mt-4 max-w-3xl text-base text-cloth-chalk/80">
           Каталог упражнений с визуальными схемами, точкой удара и фиксацией результата по попыткам.
         </p>
         <p class="mt-2 text-xs text-cloth-muted">
-          <template v-if="sync.syncStatus === 'synced'">Прогресс подтянут из аккаунта хаба.</template>
+          <template v-if="sync.syncStatus === 'synced'">Прогресс подтянут из облака.</template>
           <template v-else-if="sync.syncStatus === 'syncing'">Синхронизация прогресса…</template>
           <template v-else-if="sync.syncStatus === 'offline'">
-            Без входа прогресс только на этом устройстве.
+            Без API прогресс только на этом устройстве.
           </template>
           <template v-else-if="sync.syncError">{{ sync.syncError }}</template>
         </p>

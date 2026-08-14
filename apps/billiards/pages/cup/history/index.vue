@@ -11,15 +11,14 @@ onMounted(() => {
 
 <template>
   <div>
-    <AppHeader />
-    <main class="mx-auto max-w-6xl px-4 py-8">
+    <main class="page-shell py-8">
       <NuxtLink to="/cup" class="btn-ghost text-sm">← Турнир</NuxtLink>
 
       <section class="hero-surface mt-4 rounded-2xl px-5 py-5 sm:px-6">
         <h1 class="font-display text-3xl font-bold text-cloth-chalk">История турниров</h1>
         <p class="mt-2 text-sm text-cloth-chalk/75">
           Локальные снимки
-          <span v-if="username"> и синхронизация с хабом ({{ username }})</span>.
+          <span v-if="username"> и синхронизация с облаком</span>.
         </p>
       </section>
 
@@ -41,7 +40,7 @@ onMounted(() => {
               <h2 class="font-display text-xl font-bold text-cloth-chalk">{{ item.title }}</h2>
               <p class="mt-1 text-sm text-cloth-muted">
                 {{ cupFormatTitle(item.format) }} · игроков: {{ item.player_count }} ·
-                {{ item.source === 'hub' ? 'хаб' : 'локально' }}
+                {{ item.source === 'hub' ? 'облако' : 'локально' }}
               </p>
               <p v-if="item.winner_name" class="mt-1 text-sm text-emerald-300">Победитель: {{ item.winner_name }}</p>
             </div>

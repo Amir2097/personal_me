@@ -90,8 +90,7 @@ const onStorage = (event: StorageEvent) => {
 
 <template>
   <div>
-    <AppHeader />
-    <main class="mx-auto max-w-6xl px-4 py-6">
+    <main class="page-shell page-shell--wide py-6">
       <div class="flex flex-wrap items-center justify-between gap-3">
         <div class="flex flex-wrap gap-2">
           <NuxtLink to="/cup/bracket" class="btn-ghost text-sm">← Турнир</NuxtLink>
@@ -129,12 +128,12 @@ const onStorage = (event: StorageEvent) => {
 
       <CupTournamentSwitcher compact class="mt-4" />
 
-      <section class="hero-surface mt-5 rounded-2xl px-5 py-5 sm:px-6">
-        <p class="text-xs font-semibold uppercase tracking-[0.22em] text-cloth-accent">Табло турнира</p>
-        <h1 class="mt-2 font-display text-3xl font-extrabold text-cloth-chalk">
+      <section class="hero-surface mt-5 px-6 py-9 sm:px-10 sm:py-11">
+        <p class="section-eyebrow">Табло турнира</p>
+        <h1 class="mt-3 font-display text-4xl font-bold text-cloth-chalk sm:text-5xl lg:text-6xl">
           {{ store.tournament.name || 'Турнир' }}
         </h1>
-        <p class="mt-2 text-sm text-cloth-muted">
+        <p class="mt-3 text-base text-cloth-muted">
           {{ cupFormatTitle(store.tournament.format) }} · {{ cupRaceLabel(store.tournament.raceTo) }}
           · сыграно {{ doneCount }} из {{ store.matches.length }}
         </p>
@@ -159,15 +158,15 @@ const onStorage = (event: StorageEvent) => {
         <div class="mt-5 grid gap-4 md:grid-cols-[1fr_auto_1fr] md:items-center">
           <div>
             <p class="text-sm font-semibold text-cloth-chalk">{{ nameOf(featuredMatch.playerAId) }}</p>
-            <p class="mt-1 font-display text-5xl font-black text-cloth-accent">{{ featuredMatch.framesA }}</p>
+            <p class="score-num mt-2 text-7xl font-bold text-gradient">{{ featuredMatch.framesA }}</p>
             <p class="mt-1 text-sm text-cloth-muted">шары: {{ featuredMatch.ballsA }}</p>
           </div>
           <div class="text-center">
-            <p class="font-display text-xl font-bold text-cloth-muted">против</p>
+            <p class="text-xs uppercase tracking-[0.22em] text-cloth-muted">против</p>
             <template v-if="store.hasShotClock && featuredMatch.status === 'live'">
               <p
-                class="mt-3 font-display text-3xl font-bold"
-                :class="store.shotClock.remainingMs <= 5000 ? 'text-red-500' : ''"
+                class="score-num mt-3 text-3xl font-bold"
+                :class="store.shotClock.remainingMs <= 5000 ? 'text-cloth-danger' : 'text-cloth-accent'"
               >
                 {{ clockLabel }}
               </p>
@@ -175,7 +174,7 @@ const onStorage = (event: StorageEvent) => {
           </div>
           <div class="md:text-right">
             <p class="text-sm font-semibold text-cloth-chalk">{{ nameOf(featuredMatch.playerBId) }}</p>
-            <p class="mt-1 font-display text-5xl font-black text-cloth-accent">{{ featuredMatch.framesB }}</p>
+            <p class="score-num mt-2 text-7xl font-bold text-gradient">{{ featuredMatch.framesB }}</p>
             <p class="mt-1 text-sm text-cloth-muted">шары: {{ featuredMatch.ballsB }}</p>
           </div>
         </div>
@@ -191,7 +190,7 @@ const onStorage = (event: StorageEvent) => {
         <span
           v-for="match in [...liveMatches, ...readyMatches]"
           :key="match.id"
-          class="rounded-lg border border-cloth-border px-3 py-1.5 text-xs text-cloth-chalk"
+          class="panel-surface px-3 py-1.5 text-xs text-cloth-chalk"
           :class="match.id === featuredMatch?.id ? 'border-cloth-accent/60 bg-cloth-accent/10' : ''"
         >
           #{{ match.displayNo }} {{ nameOf(match.playerAId) }} {{ scoreLine(match) }}
@@ -216,7 +215,7 @@ const onStorage = (event: StorageEvent) => {
           <li
             v-for="match in finishedMatches"
             :key="match.id"
-            class="flex items-center justify-between gap-3 rounded-lg border border-cloth-border px-3 py-2 text-sm"
+            class="panel-surface flex items-center justify-between gap-3 px-3 py-2 text-sm"
           >
             <span class="min-w-0 truncate text-cloth-chalk">
               #{{ match.displayNo }} · {{ nameOf(match.playerAId) }} — {{ nameOf(match.playerBId) }}

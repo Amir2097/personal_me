@@ -8,6 +8,7 @@ const props = withDefaults(
 )
 
 const history = useKolkhozHistory()
+const { isSignedIn } = useHubAuth()
 const titleDraft = ref('')
 const message = ref('')
 
@@ -61,6 +62,10 @@ const remove = async (id: number) => {
           После первого сохранения можно обновлять ту же запись по ходу турнира.
         </p>
         <p class="mt-2 text-xs text-cloth-accent">Сейчас в сессии: {{ history.sessionHint.value }}</p>
+        <p v-if="!isSignedIn" class="mt-2 text-xs text-cloth-muted">
+          Партия на этом устройстве уже пишется в браузер.
+          Облачные снимки появятся, когда будет доступен API Цифрового Сукна.
+        </p>
       </div>
     </div>
 

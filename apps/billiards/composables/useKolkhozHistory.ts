@@ -65,11 +65,10 @@ export const useKolkhozHistory = () => {
   const refresh = async () => {
     error.value = ''
     const ok = await ensureAuthenticated()
-    if (!ok) {
-      games.value = []
-      error.value = 'Войдите через хаб, чтобы видеть историю.'
-      return
-    }
+      if (!ok) {
+        games.value = []
+        return
+      }
     loading.value = true
     try {
       games.value = await $fetch<GameSummary[]>(apiUrl('/api/v1/kolkhoz/games'), {
@@ -88,7 +87,7 @@ export const useKolkhozHistory = () => {
     error.value = ''
     const ok = await ensureAuthenticated()
     if (!ok) {
-      error.value = 'Нужна авторизация, чтобы сохранить партию.'
+      error.value = 'Облако сейчас недоступно. Игра на устройстве уже сохраняется сама.'
       return null
     }
     if (!store.players.length && !store.events.length) {

@@ -1,6 +1,30 @@
 <script setup lang="ts">
 const store = useKolkhozStore()
 const { hydrateTheme } = useClothTheme()
+const { appPath } = useAppBase()
+const { title, description, keywords, ogImage, canonical, brandName, hydrate: hydrateSeo } = useSuknoSeo()
+
+useHead(() => ({
+  title: title.value,
+  titleTemplate: (page?: string) => {
+    if (!page || page === title.value || page === brandName.value) return title.value
+    return `${page} · ${brandName.value}`
+  },
+  link: [
+    { rel: 'icon', type: 'image/svg+xml', href: appPath('favicon.svg') },
+    { rel: 'apple-touch-icon', href: appPath('brand/icon.png') },
+    ...(canonical.value ? [{ rel: 'canonical', href: canonical.value }] : [])
+  ],
+  meta: [
+    { name: 'description', content: description.value },
+    ...(keywords.value ? [{ name: 'keywords', content: keywords.value }] : []),
+    { property: 'og:title', content: title.value },
+    { property: 'og:description', content: description.value },
+    { property: 'og:image', content: ogImage.value },
+    ...(canonical.value ? [{ property: 'og:url', content: canonical.value }] : []),
+    { name: 'theme-color', content: '#0b1311' }
+  ]
+}))
 
 let rafId = 0
 let targetScroll = 0
@@ -28,6 +52,7 @@ const onScroll = () => {
 onMounted(() => {
   hydrateTheme()
   store.hydrate()
+  void hydrateSeo()
   targetScroll = window.scrollY || 0
   currentScroll = targetScroll
   document.documentElement.style.setProperty('--table-scroll', currentScroll.toFixed(2))

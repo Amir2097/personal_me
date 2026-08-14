@@ -20,7 +20,9 @@ type SessionGetResponse = {
  * Host pushes cup Pinia state; TV polls by room code.
  */
 export const useCupSync = () => {
-  const { apiUrl, authHeaders, ensureAuthenticated } = useHubAuth()
+  const { apiUrl, authHeaders, withCredentials, ensureAuthenticated } = useHubAuth()
+  const { canSyncRoom, syncDeniedMessage } = useGameAccess()
+  const { appHref } = useAppBase()
   const store = useCupStore()
 
   const roomCode = useState<string | null>('cup-room-code', () => null)
@@ -91,6 +93,7 @@ export const useCupSync = () => {
     await ensureAuthenticated()
     const res = await fetch(apiUrl(`/api/v1/cup/sessions/${encodeURIComponent(roomCode.value)}`), {
       method: 'PUT',
+      ...withCredentials,
       headers: { ...authHeaders(), 'Content-Type': 'application/json' },
       body: JSON.stringify({ state: store.exportSnapshot() })
     })
@@ -104,13 +107,22 @@ export const useCupSync = () => {
 
   const createRoom = async () => {
     syncError.value = ''
+    if (!canSyncRoom.value) {
+      syncError.value = syncDeniedMessage
+      return null
+    }
     await ensureAuthenticated()
     const res = await fetch(apiUrl('/api/v1/cup/sessions'), {
       method: 'POST',
+      ...withCredentials,
       headers: { ...authHeaders(), 'Content-Type': 'application/json' }
     })
+    if (res.status === 403) {
+      syncError.value = syncDeniedMessage
+      return null
+    }
     if (!res.ok) {
-      syncError.value = 'Не удалось создать комнату'
+      syncError.value = 'Не удалось создать комнату. Проверьте, что API Цифрового Сукна запущен.'
       return null
     }
     const data = (await res.json()) as { code: string; revision: number }
@@ -182,6 +194,7 @@ export const useCupSync = () => {
       await ensureAuthenticated()
       await fetch(apiUrl(`/api/v1/cup/sessions/${encodeURIComponent(roomCode.value)}`), {
         method: 'DELETE',
+        ...withCredentials,
         headers: { ...authHeaders() }
       })
     }
@@ -190,9 +203,7 @@ export const useCupSync = () => {
 
   const tvUrl = computed(() => {
     if (!import.meta.client || !roomCode.value) return ''
-    const url = new URL('/billiards/cup/tv', window.location.origin)
-    url.searchParams.set('room', roomCode.value)
-    return url.toString()
+    return appHref('cup/tv', { room: roomCode.value })
   })
 
   return {

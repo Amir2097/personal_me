@@ -1,6 +1,7 @@
 <script setup lang="ts">
 const sync = useKolkhozSync()
 const { ready } = useHubAuth()
+const { canSyncRoom, syncDeniedMessage } = useGameAccess()
 
 const joinInput = ref('')
 const busy = ref(false)
@@ -56,7 +57,7 @@ const copyTvLink = async () => {
         </h3>
         <p class="mt-1 text-xs text-cloth-muted">
           Ведущий с телефона или ноутбука отправляет партию на сервер. Другие устройства открывают
-          код или ссылку табло — без входа в хаб, только просмотр. Обновление примерно раз в секунду.
+          код или ссылку табло — без входа, только просмотр. Обновление примерно раз в секунду.
         </p>
       </div>
     </div>
@@ -106,19 +107,22 @@ const copyTvLink = async () => {
         <button
           type="button"
           class="btn-primary mt-3 text-xs"
-          :disabled="busy || (ready && !sync.username.value)"
+          :disabled="busy || (ready && !sync.username.value) || !canSyncRoom"
           @click="startHost"
         >
           {{ busy ? '…' : 'Создать комнату' }}
         </button>
-        <p v-if="ready && !sync.username.value" class="mt-2 text-[11px] text-amber-700">
-          Сначала войдите через хаб.
+        <p v-if="!canSyncRoom" class="mt-2 text-[11px] text-amber-700">
+          {{ syncDeniedMessage }}
+        </p>
+        <p v-else-if="ready && !sync.username.value" class="mt-2 text-[11px] text-amber-700">
+          Нет связи с API Цифрового Сукна.
         </p>
       </div>
       <div class="rounded-xl border border-[color:var(--cloth-border)] p-3">
         <p class="text-sm font-semibold">Я табло / зритель</p>
         <p class="mt-1 text-xs text-cloth-muted">
-          Введите код с телефона ведущего — можно с телефона гостя, планшета или TV по адресу хаба.
+          Введите код с телефона ведущего — можно с телефона гостя, планшета или TV.
         </p>
         <div class="mt-3 flex gap-2">
           <input

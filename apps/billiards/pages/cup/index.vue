@@ -47,19 +47,18 @@ const removeTournament = (item: CupTournamentBundle) => {
 
 <template>
   <div>
-    <AppHeader />
-    <main class="mx-auto max-w-6xl px-4 py-8">
+    <main class="page-shell py-8">
       <NuxtLink to="/" class="btn-ghost text-sm">← На главную</NuxtLink>
 
-      <section class="hero-surface mt-4 rounded-2xl px-5 py-5 sm:px-6">
-        <p class="flex items-center gap-2 text-sm text-cloth-muted">
+      <section class="hero-surface mt-4 px-6 py-9 sm:px-10 sm:py-12">
+        <p class="section-eyebrow">
           <AppIcon name="trophy" class="text-cloth-accent" />
           Классические сетки
         </p>
-        <h2 class="mt-2 font-display text-3xl font-extrabold tracking-tight text-cloth-chalk sm:text-4xl">
+        <h2 class="mt-4 font-display text-4xl font-bold text-cloth-chalk sm:text-5xl lg:text-6xl">
           Турнир
         </h2>
-        <p class="mt-3 max-w-4xl text-sm leading-relaxed text-cloth-chalk/75">
+        <p class="mt-4 max-w-3xl text-base leading-relaxed text-cloth-chalk/75">
           Несколько турниров могут идти параллельно — переключайтесь между сетками без потери прогресса.
           Олимпийская система или до двух поражений, пульт матча и табло для стола.
         </p>

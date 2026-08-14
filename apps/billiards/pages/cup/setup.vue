@@ -103,8 +103,7 @@ const start = async () => {
 
 <template>
   <div>
-    <AppHeader />
-    <main class="mx-auto max-w-6xl px-4 py-8">
+    <main class="page-shell py-8">
       <NuxtLink to="/cup" class="btn-ghost text-sm">← К турниру</NuxtLink>
 
       <section class="hero-surface mt-4 rounded-2xl px-5 py-5 sm:px-6">

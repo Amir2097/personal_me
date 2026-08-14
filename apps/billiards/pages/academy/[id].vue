@@ -57,8 +57,8 @@ const saveResult = async () => {
     academy.recordResult(exercise.value.id, made.value, attempts.value)
     const pushed = await sync.pushOne(exercise.value.id)
     saveHint.value = pushed
-      ? 'Сохранено локально и в аккаунте хаба.'
-      : 'Сохранено на этом устройстве. Войдите, чтобы синхронизировать.'
+      ? 'Сохранено локально и в облаке.'
+      : 'Сохранено на этом устройстве. Облако сейчас недоступно.'
   } finally {
     saving.value = false
   }
@@ -103,8 +103,7 @@ const updatedAt = computed(() => {
 
 <template>
   <div>
-    <AppHeader />
-    <main class="mx-auto max-w-6xl px-4 py-6">
+    <main class="page-shell py-6">
       <NuxtLink to="/academy" class="btn-ghost text-sm">← К каталогу</NuxtLink>
       <NuxtLink to="/" class="btn-ghost ml-2 text-sm">Главная</NuxtLink>
 
@@ -143,8 +142,8 @@ const updatedAt = computed(() => {
             <h2 class="font-display text-xl font-bold">Результат тренировки</h2>
             <p class="mt-1 text-xs text-cloth-muted">Цель упражнения: {{ exercise.target_reps }} попыток</p>
             <p class="mt-1 text-xs text-cloth-muted">
-              <template v-if="sync.isSignedIn">Прогресс синхронизируется с аккаунтом хаба.</template>
-              <template v-else>Без входа результат хранится только на этом устройстве.</template>
+              <template v-if="sync.isSignedIn">Прогресс синхронизируется с облаком.</template>
+              <template v-else>Без API результат хранится только на этом устройстве.</template>
             </p>
 
             <div class="mt-4 rounded-lg border border-white/10 px-3 py-2 text-sm">

@@ -40,8 +40,7 @@ const restoreToActive = async () => {
 
 <template>
   <div>
-    <AppHeader />
-    <main class="mx-auto max-w-6xl px-4 py-8">
+    <main class="page-shell py-8">
       <NuxtLink to="/cup/history" class="btn-ghost text-sm">← История</NuxtLink>
 
       <p v-if="loading" class="mt-6 text-sm text-cloth-chalk">Загрузка…</p>

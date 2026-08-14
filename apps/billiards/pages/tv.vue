@@ -2,6 +2,8 @@
 import { groupLabel, modeLabel, tournamentKindLabel } from '~/utils/labels'
 import { createEmptyState } from '~/types/kolkhoz'
 
+definePageMeta({ layout: 'bare' })
+
 const store = useKolkhozStore()
 const config = useRuntimeConfig()
 const route = useRoute()
@@ -198,7 +200,7 @@ const toggleMute = () => {
 </script>
 
 <template>
-  <div class="min-h-screen px-3 py-4 text-cloth-chalk sm:px-6 sm:py-5">
+  <div class="min-h-screen px-4 py-4 text-cloth-chalk sm:px-6 sm:py-5 lg:px-8">
     <header class="tv-topbar rounded-2xl px-3 py-2.5 sm:px-4 sm:py-3">
       <div class="tv-topbar__row">
         <div class="tv-topbar__brand">

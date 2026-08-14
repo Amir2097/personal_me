@@ -8,8 +8,9 @@
 
 - `nginx` is the public entrypoint on port `80`.
 - `frontend` (Nuxt 3 SSR) serves terminal UI on port `3000`.
-- `billiards` (Nuxt) serves Kolkhoz Manager under `/billiards/` on port `3010`.
-- `backend` (FastAPI) serves API on port `8000`.
+- `billiards` (Nuxt) serves **Цифровое Сукно** under `/billiards/` on the hub (or `/` with `NUXT_APP_BASE_URL=/` on its own domain).
+- `billiards-api` (FastAPI) serves kolkhoz/cup/academy on port `8010`.
+- `backend` (FastAPI) serves hub API on port `8000`.
 - `db` (PostgreSQL) stores relational data.
 
 Traffic:
@@ -17,8 +18,9 @@ Traffic:
 1. Browser -> `nginx`
 2. `nginx` `/` -> `frontend`
 3. `nginx` `/billiards/` -> `billiards`
-4. `nginx` `/api/*` -> `backend`
-5. `backend` -> `postgres`
+4. `nginx` `/api/v1/{kolkhoz,cup,academy,billiards}` and `/api/sukno` -> `billiards-api`
+5. `nginx` `/api/*` -> `backend`
+6. `backend` / `billiards-api` -> `postgres`
 
 ## Auth and Command Flow
 
@@ -32,9 +34,10 @@ Traffic:
 
 ## Hobby / Billiards
 
-- Hub page `/hobby` links to the billiards subservice.
-- Integration key `billiards` enables `go billiards` from the terminal.
-- Game state is offline-first (`localStorage`); FastAPI sync can be added later.
+- Billiards is **Цифровое Сукно** under `/billiards/` (see `docs/architecture/billiards-product.md`).
+- Play, brackets and TV work without hub login. Device JWT talks to `billiards-api`.
+- Hub SSO is optional cloud identity. Page `/hobby` can open the service as a guest or with SSO when already signed in.
+- Integration key `billiards` still enables `go billiards` from the terminal.
 
 ## Scalability Notes
 

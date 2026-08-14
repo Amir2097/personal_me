@@ -1,6 +1,11 @@
-# Billiards Kolkhoz Manager
+# Цифровое Сукно
 
-Offline-first Nuxt 3 подсервис DAUTOVTECH для игры «Колхоз».
+Nuxt-приложение: колхоз, олимпийская сетка, академия, табло.
+Бренд фиксированный — **Цифровое Сукно**. Контур клуба (своё имя, тенант) пока не заводится: клубы позже получат внутренний
+функционал, без смены вывески. SEO установки настраивается в `/admin`.
+
+Карта выноса: `docs/architecture/billiards-product.md`.
+API: `apps/billiards-api`.
 
 ## Локально
 
@@ -10,49 +15,45 @@ npm install
 npm run dev
 ```
 
-Откроется на `http://localhost:3010/billiards/`.
+Откроется на `http://localhost:3010/billiards/` без редиректа на логин
+(префикс хаба). Для своего домена: `NUXT_APP_BASE_URL=/` — тогда главная это `/`.
 
 ## Docker
 
-Сервис `billiards` в корневом `docker-compose.yml`, nginx: `/billiards/`.
+- Основной стек: `billiards` + `billiards-api` в корневом `docker-compose.yml`, nginx `/billiards/`.
+- Свой контур (главная `/`): `docker compose -f docker-compose.billiards.yml up --build`
+  → `http://localhost:8080/`.
 
 ## Режимы
 
-- `/billiards/` — выбор режима
-- `/billiards/casual` — быстрый стол
-- `/billiards/tournament` — турнир
-- `/billiards/tv` — TV-табло
+- `/` — главная
+- `/casual`, `/tournament` — колхоз
+- `/cup` — сетка
+- `/academy` — тренажёр
+- `/tv` — табло (просмотр комнаты без входа)
+- `/admin` — SEO и настройки сайта (аккаунт admin; dev: опционально `SUKNO_ADMIN_KEY`)
 
-Состояние в `localStorage` (`dautovtech_kolkhoz_v1`).
+Состояние игры: `localStorage`.
+
+Бренд: `public/favicon.svg`, `public/brand/logo.svg` (светлый фон),
+`public/brand/logo-on-dark.svg`, `public/brand/icon.png`.
 
 ## Авторизация
 
-- Страница хаба `/hobby` публичная; запуск Kolkhoz требует login.
-- `go billiards` / кнопка на `/hobby` открывают URL с одноразовым `sso_code`.
-- Middleware billiards обменивает код (или проверяет cookie/JWT через `/auth/me`).
-- Гостей перенаправляет на `/hobby?auth=required`.
+- Гость играет сразу. При наличии API устройство получает локальный JWT
+  (`POST /api/v1/billiards/auth/device`) — комнаты табло и облачные снимки
+  работают без хаба.
+- Если открыть из хаба с `sso_code`, подхватывается сессия хаба (тот же JWT secret).
+- Кнопка «Войти через хаб» необязательная, чтобы связать историю с аккаунтом DAUTOVTECH.
+- Админка: `/admin`, ключ в compose по умолчанию `sukno-dev-admin`. Полноценный вход операторов — позже.
 
 ## Синк телефон ↔ TV
 
-1. На пульте (`/tournament/play`) блок **Синк** → «Открыть синк» (нужна авторизация).
-2. Появится код комнаты — откройте на TV `/billiards/tv?room=КОД` или введите код на табло.
-3. Хост пушит состояние при каждом изменении; TV опрашивает API ~раз в секунду.
-4. API: `POST/PUT/GET /api/v1/kolkhoz/sessions`.
+1. На пульте **Синк** → создать комнату (нужен API Цифрового Сукна).
+2. На TV `/tv?room=КОД` — без входа.
+3. Хост пушит состояние; TV опрашивает API.
 
-## История партий
+## История
 
-Снимки на сервере под аккаунтом хаба:
-
-- `POST /api/v1/kolkhoz/games` — сохранить текущую партию
-- `GET /api/v1/kolkhoz/games` — список
-- `GET /api/v1/kolkhoz/games/{id}` — загрузить state
-- `DELETE /api/v1/kolkhoz/games/{id}` — удалить
-
-На главной Kolkhoz и на пультах — блок **История партий**.
-
-## Академия — прогресс
-
-Результаты упражнений:
-
-- локально в `localStorage` (`billiards_academy_progress_v1`);
-- при входе через хаб — синк с `GET/PUT /api/v1/academy/progress` (новее по `updated_at` побеждает).
+- Турнирная сетка: локальные снимки + облако, если API доступен.
+- Колхоз: облачные снимки через API; текущая партия и так в браузере.

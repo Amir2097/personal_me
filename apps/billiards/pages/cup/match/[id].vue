@@ -46,8 +46,7 @@ const canScore = computed(
 
 <template>
   <div>
-    <AppHeader />
-    <main class="mx-auto max-w-6xl px-4 py-8">
+    <main class="page-shell py-8">
       <div class="flex flex-wrap gap-2">
         <NuxtLink to="/cup/bracket" class="btn-ghost text-sm">← Сетка</NuxtLink>
         <NuxtLink to="/cup/tv" class="btn-ghost text-sm">Табло турнира</NuxtLink>
@@ -76,12 +75,12 @@ const canScore = computed(
       </section>
 
       <section v-else class="mt-4">
-        <section class="hero-surface rounded-2xl px-5 py-5">
-          <p class="text-xs uppercase tracking-[0.2em] text-cloth-accent">
+        <section class="hero-surface px-6 py-8 sm:px-8">
+          <p class="section-eyebrow">
             {{ match.roundLabel }} · {{ store.tournament.name }}
           </p>
-          <h1 class="mt-2 font-display text-3xl font-bold text-cloth-chalk">Пульт матча</h1>
-          <p class="mt-1 text-sm text-cloth-chalk/75">
+          <h1 class="mt-3 font-display text-4xl font-bold text-cloth-chalk sm:text-5xl">Пульт матча</h1>
+          <p class="mt-2 text-sm text-cloth-chalk/75">
             {{ cupRaceLabel(store.tournament.raceTo) }} · шары текущей партии
           </p>
         </section>
@@ -90,7 +89,7 @@ const canScore = computed(
           <div class="card-surface p-5">
             <p class="text-xs uppercase tracking-wider text-cloth-muted">Игрок A</p>
             <h2 class="mt-1 font-display text-2xl font-bold">{{ nameA }}</h2>
-            <p class="mt-4 text-4xl font-extrabold text-cloth-accent">{{ match.framesA }}</p>
+            <p class="score-num mt-4 text-6xl font-bold text-gradient">{{ match.framesA }}</p>
             <p class="mt-1 text-sm text-cloth-muted">партии</p>
             <p class="mt-4 text-2xl font-bold">{{ match.ballsA }} <span class="text-sm font-normal text-cloth-muted">шаров</span></p>
             <div class="mt-4 flex flex-wrap gap-2">
@@ -109,7 +108,7 @@ const canScore = computed(
           <div class="card-surface p-5">
             <p class="text-xs uppercase tracking-wider text-cloth-muted">Игрок B</p>
             <h2 class="mt-1 font-display text-2xl font-bold">{{ nameB }}</h2>
-            <p class="mt-4 text-4xl font-extrabold text-cloth-accent">{{ match.framesB }}</p>
+            <p class="score-num mt-4 text-6xl font-bold text-gradient">{{ match.framesB }}</p>
             <p class="mt-1 text-sm text-cloth-muted">партии</p>
             <p class="mt-4 text-2xl font-bold">{{ match.ballsB }} <span class="text-sm font-normal text-cloth-muted">шаров</span></p>
             <div class="mt-4 flex flex-wrap gap-2">
@@ -130,7 +129,10 @@ const canScore = computed(
           <div class="flex flex-wrap items-center justify-between gap-3">
             <div>
               <p class="text-xs uppercase tracking-wider text-cloth-muted">Таймер хода</p>
-              <p class="mt-1 font-display text-4xl font-bold" :class="store.shotClock.remainingMs <= 5000 ? 'text-red-300' : ''">
+              <p
+                class="score-num mt-1 text-4xl font-bold"
+                :class="store.shotClock.remainingMs <= 5000 ? 'text-cloth-danger' : 'text-cloth-accent'"
+              >
                 {{ clockLabel }}
               </p>
             </div>

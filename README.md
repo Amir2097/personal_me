@@ -18,8 +18,9 @@
    ```
 3. Откройте сервисы:
    - UI: `http://localhost`
-   - Hobby / Billiards: `http://localhost/hobby` и `http://localhost/billiards/`
+   - Hobby / Цифровое Сукно: `http://localhost/hobby` и `http://localhost/billiards/`
    - Backend Swagger: `http://localhost/api/docs`
+   - Цифровое Сукно API: `http://localhost/api/sukno/docs`
    - Backend OpenAPI: `http://localhost/api/openapi.json`
 
 Остановка:
@@ -38,7 +39,8 @@ docker compose down -v
 
 - `backend` — API, auth, обработка терминальных команд.
 - `frontend` — Nuxt-приложение с терминальным UI.
-- `apps/billiards` — подсервис Billiards Kolkhoz Manager (Nuxt, offline-first).
+- `apps/billiards` — Цифровое Сукно, UI (Nuxt, offline-first).
+- `apps/billiards-api` — Цифровое Сукно, API (колхоз, турнир, академия, табло).
 - `docs` — техническая документация и архитектурные заметки.
 - `nginx` — конфиг reverse proxy.
 - `docker-compose.yml` — оркестрация окружения.

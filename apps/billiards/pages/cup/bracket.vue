@@ -33,8 +33,7 @@ const openMatch = async (id: string) => {
 
 <template>
   <div>
-    <AppHeader />
-    <main class="mx-auto max-w-6xl px-4 py-6">
+    <main class="page-shell page-shell--wide py-6">
       <div class="flex flex-wrap items-center gap-2">
         <NuxtLink to="/cup" class="btn-ghost text-sm">← Турнир</NuxtLink>
         <NuxtLink to="/cup/tv" class="btn-ghost text-sm">Табло</NuxtLink>

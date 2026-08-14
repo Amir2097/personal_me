@@ -27,6 +27,8 @@ type SessionCreateResponse = {
  */
 export const useKolkhozSync = () => {
   const { apiUrl, authHeaders, username, ensureAuthenticated } = useHubAuth()
+  const { canSyncRoom, syncDeniedMessage } = useGameAccess()
+  const { appHref } = useAppBase()
   const store = useKolkhozStore()
 
   const roomCode = useState<string | null>('kolkhoz-room-code', () => null)
@@ -119,9 +121,13 @@ export const useKolkhozSync = () => {
   const createRoom = async () => {
     syncError.value = ''
     endedMessage.value = ''
+    if (!canSyncRoom.value) {
+      syncError.value = syncDeniedMessage
+      return null
+    }
     const ok = await ensureAuthenticated()
     if (!ok) {
-      syncError.value = 'Нужна авторизация на хабе, чтобы создать комнату.'
+      syncError.value = 'Комнату для табло можно открыть, когда доступен API. Сама игра на этом устройстве уже идёт.'
       return null
     }
     try {
@@ -138,7 +144,13 @@ export const useKolkhozSync = () => {
       await pushNow()
       return created.code
     } catch (error) {
-      syncError.value = error instanceof Error ? error.message : 'Не удалось создать комнату'
+      const status = (error as { statusCode?: number })?.statusCode
+      syncError.value =
+        status === 403
+          ? syncDeniedMessage
+          : error instanceof Error
+            ? error.message
+            : 'Не удалось создать комнату'
       return null
     }
   }
@@ -297,9 +309,7 @@ export const useKolkhozSync = () => {
 
   const tvUrl = computed(() => {
     if (!import.meta.client || !roomCode.value) return ''
-    const url = new URL('/billiards/tv', window.location.origin)
-    url.searchParams.set('room', roomCode.value)
-    return url.toString()
+    return appHref('tv', { room: roomCode.value })
   })
 
   const isLive = computed(() => roomStatus.value === 'live' && Boolean(roomCode.value))

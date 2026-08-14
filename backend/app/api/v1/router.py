@@ -11,9 +11,6 @@ from app.api.v1.contacts import router as contacts_router
 from app.api.v1.feedback import router as feedback_router
 from app.api.v1.terminal import router as terminal_router
 from app.api.v1.users import router as users_router
-from app.api.v1.kolkhoz import router as kolkhoz_router
-from app.api.v1.academy import router as academy_router
-from app.api.v1.cup import router as cup_router
 
 api_router = APIRouter()
 api_router.include_router(auth_router)
@@ -25,6 +22,3 @@ api_router.include_router(contacts_router)
 api_router.include_router(feedback_router)
 api_router.include_router(terminal_router)
 api_router.include_router(users_router)
-api_router.include_router(kolkhoz_router)
-api_router.include_router(academy_router)
-api_router.include_router(cup_router)
