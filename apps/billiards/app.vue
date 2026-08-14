@@ -67,6 +67,8 @@ onMounted(() => {
 
 <template>
   <div class="grunge-shell min-h-screen">
-    <NuxtPage />
+    <NuxtLayout>
+      <NuxtPage />
+    </NuxtLayout>
   </div>
 </template>
