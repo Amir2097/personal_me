@@ -36,8 +36,8 @@ const isDecisiveFinal = (match: CupMatch) =>
 
 const roundSortKey = (roundKey: string) => {
   if (roundKey === 'de-final' || roundKey === 'grand-final') return 50_000
+  if (roundKey === 'wb-final' || roundKey === 'se-final') return 45_000
   if (roundKey === 'wb-semi') return 40_000
-  if (roundKey === 'wb-final' || roundKey === 'se-final') return 40_000
   const wb2 = roundKey.match(/^wb2-(\d+)$/)
   if (wb2) return 10_000 - Number(wb2[1]) + 1
   const upper = roundKey.match(/^se-r(\d+)$/)

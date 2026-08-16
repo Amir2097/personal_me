@@ -39,3 +39,14 @@
 ## Backup
 
 - Backup PostgreSQL volume regularly
+
+## Цифровое Сукно (standalone)
+
+```bash
+docker compose -f docker-compose.billiards.yml up --build -d
+```
+
+- Change `JWT_SECRET_KEY`, `INITIAL_ADMIN_PASSWORD`, `SUKNO_ADMIN_KEY`
+- Set `ALLOW_LEGACY_ADMIN_KEY=false` and real SMTP on a public host
+- UI image: `apps/billiards/Dockerfile.prod` (`NUXT_APP_BASE_URL=/`)
+- Public entry: nginx on `:8080` (`nginx/sukno.conf`); prefer it over raw `:3010`

@@ -1,4 +1,5 @@
 # Standalone Цифровое Сукно (UI + API, without the DAUTOVTECH hub).
+# Production images: UI via Dockerfile.prod (nuxt build), API via uvicorn.
 # Главная — корень `/`, как на своём домене/поддомене.
 #
 #   docker compose -f docker-compose.billiards.yml up --build
@@ -63,6 +64,12 @@ services:
         condition: service_healthy
       mailpit:
         condition: service_started
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://127.0.0.1:8010/')\""]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
     ports:
       - "8010:8010"
 
@@ -77,6 +84,13 @@ services:
   billiards:
     build:
       context: ./apps/billiards
+      dockerfile: Dockerfile.prod
+      args:
+        NUXT_APP_BASE_URL: /
+        # Empty = same-origin /api via nginx on :8080
+        NUXT_PUBLIC_API_BASE_URL: ""
+        NUXT_PUBLIC_HUB_URL: ""
+        NUXT_PUBLIC_BRAND_NAME: Цифровое Сукно
     container_name: sukno-ui
     restart: unless-stopped
     environment:
@@ -84,18 +98,15 @@ services:
       PORT: "3010"
       NITRO_HOST: 0.0.0.0
       NITRO_PORT: "3010"
-      NUXT_APP_BASE_URL: /
+      # Runtime overrides for public config (baseURL stays from build).
       NUXT_PUBLIC_HUB_URL: ""
-      NUXT_PUBLIC_API_BASE_URL: http://localhost:8010
+      NUXT_PUBLIC_API_BASE_URL: ""
       NUXT_PUBLIC_BRAND_NAME: Цифровое Сукно
     ports:
       - "3010:3010"
-    volumes:
-      - ./apps/billiards:/app
-      - sukno_node_modules:/app/node_modules
-      - sukno_nuxt:/app/.nuxt
     depends_on:
-      - billiards-api
+      billiards-api:
+        condition: service_healthy
     healthcheck:
       test:
         [
@@ -106,8 +117,8 @@ services:
         ]
       interval: 10s
       timeout: 5s
-      retries: 30
-      start_period: 180s
+      retries: 12
+      start_period: 40s
 
   nginx:
     image: nginx:1.27-alpine
@@ -123,6 +134,4 @@ services:
 
 volumes:
   sukno_postgres_data:
-  sukno_node_modules:
-  sukno_nuxt:
   sukno_uploads_data:

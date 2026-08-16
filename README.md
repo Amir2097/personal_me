@@ -43,7 +43,8 @@ docker compose down -v
 - `apps/billiards-api` — Цифровое Сукно, API (колхоз, турнир, академия, табло).
 - `docs` — техническая документация и архитектурные заметки.
 - `nginx` — конфиг reverse proxy.
-- `docker-compose.yml` — оркестрация окружения.
+- `docker-compose.yml` — полный стек (хаб + Сукно, dev UI).
+- `docker-compose.billiards.yml` — только Цифровое Сукно (prod UI-образ).
 
 ## Основные API эндпоинты
 

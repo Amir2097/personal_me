@@ -35,7 +35,8 @@ export const matchPlacementLabel = (
   }
 
   if (match.roundKey === 'wb-semi') return 'место 3–4'
-  if (match.roundKey === 'wb-final' || match.roundKey === 'lb-final') return 'место 3–4'
+  if (match.roundKey === 'wb-final') return 'место 3–4'
+  if (match.roundKey === 'lb-final') return 'место 3–4'
 
   const inRound = playersInRound(match)
   if (inRound && match.bracketSide === 'winners') {
@@ -56,7 +57,7 @@ export const matchPlacementLabel = (
       const lo = size / 2 + 1
       return `место ${lo}–${size}`
     }
-    if (match.roundKey === 'lb-r2' || match.roundKey === 'lb-final') {
+    if (match.roundKey === 'lb-final' || match.roundKey.startsWith('lb-r')) {
       const lo = size / 4 + 1
       const hi = size / 2
       return `место ${lo}–${hi}`

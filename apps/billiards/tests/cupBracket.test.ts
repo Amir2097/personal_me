@@ -58,28 +58,75 @@ describe('cupBracket SE', () => {
 })
 
 describe('cupBracket DE', () => {
-  it('builds 4-player DE on 4 slots without quarter-final byes', () => {
+  it('builds 4-player DE with WB final, LB and grand final', () => {
     const { matches } = buildDoubleElimination(players('A', 'B', 'C', 'D'))
     expect(matches.some((match) => match.bracketSide === 'losers')).toBe(true)
+    expect(matches.some((match) => match.roundKey === 'wb-final')).toBe(true)
+    expect(matches.some((match) => match.roundKey === 'lb-final')).toBe(true)
     expect(matches.some((match) => match.roundKey === 'de-final')).toBe(true)
     expect(matches.some((match) => match.roundLabel === 'Финал')).toBe(true)
     expect(matches.some((match) => match.roundLabel === 'Большой финал')).toBe(false)
     expect(matches.some((match) => match.roundLabel === '1/4')).toBe(false)
     expect(matches.filter((match) => match.roundKey === 'se-r4').length).toBe(2)
-    expect(matches.filter((match) => match.roundKey === 'se-r8').length).toBe(0)
     expect(matches.filter((match) => match.status === 'ready' && match.bracketSide === 'winners').length).toBe(2)
   })
 
-  it('builds 8-player DE like bill4you: 2 upper tours, lower return, semis, final', () => {
+  it('builds 8-player classic DE with crossover LB and grand final', () => {
     const { matches } = buildDoubleElimination(
       players('A', 'B', 'C', 'D', 'E', 'F', 'G', 'H')
     )
     expect(matches.filter((match) => match.roundKey === 'se-r8').length).toBe(4)
-    expect(matches.filter((match) => match.roundKey === 'wb2-8').length).toBe(2)
-    expect(matches.filter((match) => match.roundKey === 'wb-semi').length).toBe(2)
+    expect(matches.filter((match) => match.roundKey === 'se-r4').length).toBe(2)
+    expect(matches.filter((match) => match.roundKey === 'wb-final').length).toBe(1)
+    expect(matches.filter((match) => match.roundKey === 'lb-r1').length).toBe(2)
+    expect(matches.filter((match) => match.roundKey === 'lb-final').length).toBe(1)
     expect(matches.filter((match) => match.roundKey === 'de-final').length).toBe(1)
-    expect(matches.filter((match) => match.bracketSide === 'losers').length).toBe(4)
-    expect(matches.length).toBe(13)
+    expect(matches.filter((match) => match.bracketSide === 'losers').length).toBe(6)
+    // WB 7 + LB 6 + GF 1
+    expect(matches.length).toBe(14)
+
+    // Crossover: WB R2 loser goes to the opposite LB drop half.
+    const wbR2 = matches
+      .filter((match) => match.roundKey === 'se-r4')
+      .sort((a, b) => a.order - b.order)
+    const lbDrop = matches
+      .filter((match) => match.roundKey === 'lb-r2')
+      .sort((a, b) => a.order - b.order)
+    expect(wbR2).toHaveLength(2)
+    expect(lbDrop).toHaveLength(2)
+    expect(wbR2[0].loserNextMatchId).toBe(lbDrop[1].id)
+    expect(wbR2[1].loserNextMatchId).toBe(lbDrop[0].id)
+  })
+
+  it('avoids immediate rematch after a WB drop (8 players)', () => {
+    let { matches } = buildDoubleElimination(
+      players('A', 'B', 'C', 'D', 'E', 'F', 'G', 'H')
+    )
+    const r1 = matches
+      .filter((match) => match.roundKey === 'se-r8')
+      .sort((a, b) => a.order - b.order)
+
+    // Seeded slots: 1v8, 4v5, 2v7, 3v6 → p1,p8,p4,p5,p2,p7,p3,p6
+    // p1 beats p8, p4 beats p5 — same WB half.
+    matches = advanceWinner(matches, r1[0].id, r1[0].playerAId!, 'de').matches
+    matches = advanceWinner(matches, r1[1].id, r1[1].playerAId!, 'de').matches
+    // Other half also advances so WB R2 can complete later.
+    matches = advanceWinner(matches, r1[2].id, r1[2].playerAId!, 'de').matches
+    matches = advanceWinner(matches, r1[3].id, r1[3].playerAId!, 'de').matches
+
+    const wbR2 = matches
+      .filter((match) => match.roundKey === 'se-r4')
+      .sort((a, b) => a.order - b.order)
+    // p1 loses to p4 in WB R2[0]
+    const dropper = wbR2[0].playerAId! // p1
+    const winner = wbR2[0].playerBId! // p4
+    matches = advanceWinner(matches, wbR2[0].id, winner, 'de').matches
+
+    const lbDrop = matches.find((match) => match.id === wbR2[0].loserNextMatchId)!
+    const opponentId = lbDrop.playerAId === dropper ? lbDrop.playerBId : lbDrop.playerAId
+    // Dropped player faces LB winner from the other half — not the opponent who just beat them.
+    expect(opponentId).not.toBe(winner)
+    expect(lbDrop.playerAId === dropper || lbDrop.playerBId === dropper).toBe(true)
   })
 
   it('sends loser to losers bracket', () => {
@@ -104,6 +151,7 @@ describe('cupBracket DE', () => {
     const { matches } = buildDoubleElimination(players(...names))
     expect(matches.filter((match) => match.bracketSide === 'losers').length).toBeGreaterThan(8)
     expect(matches.some((match) => match.roundKey === 'de-final')).toBe(true)
+    expect(matches.some((match) => match.roundKey === 'wb-final')).toBe(true)
     expect(matches.every((match) => match.displayNo > 0)).toBe(true)
   })
 
@@ -112,7 +160,6 @@ describe('cupBracket DE', () => {
       const names = Array.from({ length: count }, (_, index) => `P${index + 1}`)
       const { matches } = buildDoubleElimination(players(...names))
 
-      // No LB match may reserve a slot fed only by a BYE R1 (dead empty opponent).
       const r1 = matches.filter((match) => match.roundLabel === 'Первый тур')
       for (const match of r1) {
         const isBye = match.status === 'done' && !match.playerBId
@@ -121,8 +168,6 @@ describe('cupBracket DE', () => {
         }
       }
 
-      // Every losers-bracket card that already has a player must either be ready/done
-      // or still waiting on a live feeder — never a permanent lone "×".
       const losers = matches.filter((match) => match.bracketSide === 'losers')
       for (const match of losers) {
         const hasA = Boolean(match.playerAId)
@@ -156,8 +201,8 @@ describe('cupBracket DE', () => {
     const { matches } = buildDoubleElimination(players('A', 'B', 'C', 'D'))
     const layout = buildBracketLayout(matches, 'de')
     const final = layout.nodes.find((node) => node.match.roundKey === 'de-final')!
-    const r2 = layout.nodes.find((node) => node.match.roundKey.startsWith('wb2-'))!
-    expect(final.x).toBeGreaterThan(r2.x)
+    const wbFinal = layout.nodes.find((node) => node.match.roundKey === 'wb-final')!
+    expect(final.x).toBeGreaterThan(wbFinal.x)
     expect(final.band).toBe('upper')
     expect(layout.lowerBandY).not.toBeNull()
   })

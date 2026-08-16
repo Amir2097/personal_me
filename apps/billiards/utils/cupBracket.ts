@@ -193,11 +193,11 @@ export const buildSingleElimination = (
 }
 
 /**
- * Double-elimination как на bill4you:
- * — размер сетки = ближайшая степень 2 (4 на 4 игроков, без фейковых 1/4);
- * — два тура верхней сетки;
- * — проигравшие идут в нижнюю и возвращаются во встречи «на вылет»;
- * — дальше олимпийка до финала (для 8: полуфинал ×2 → финал).
+ * Classic double-elimination (Challonge / billiard DE):
+ * — full winners bracket to WB final;
+ * — losers bracket with crossover so a player who drops does not
+ *   immediately rematch the opponent who just beat them (except grand final);
+ * — grand final: WB champion vs LB champion.
  */
 export const buildDoubleElimination = (inputPlayers: CupPlayer[]): BracketBuildResult => {
   if (inputPlayers.length < 3) {
@@ -227,7 +227,14 @@ export const buildDoubleElimination = (inputPlayers: CupPlayer[]): BracketBuildR
     return row
   }
 
-  // --- Верхняя: тур 1 ---
+  const isByeMatch = (match: CupMatch) => match.status === 'done' && !match.playerBId
+
+  /** Reverse index — standard DE crossover between halves. */
+  const crossover = (index: number, count: number) => count - 1 - index
+
+  // --- Winners bracket (full SE tree) ---
+  const wbRounds: CupMatch[][] = []
+
   const r1: CupMatch[] = []
   for (let i = 0; i < size / 2; i += 1) {
     const a = slots[i * 2]
@@ -267,143 +274,22 @@ export const buildDoubleElimination = (inputPlayers: CupPlayer[]): BracketBuildR
       })
     )
   }
+  wbRounds.push(r1)
 
-  // --- Верхняя: тур 2 ---
-  const r2Count = size / 4
-  const r2: CupMatch[] = []
-  for (let i = 0; i < r2Count; i += 1) {
-    r2.push(
-      pushMatch({
-        id: cupUid('m'),
-        roundKey: `wb2-${size}`,
-        roundLabel: 'Тур 2',
-        bracketSide: 'winners',
-        order: i,
-        playerAId: null,
-        playerBId: null,
-        nextMatchId: null,
-        nextSlot: null,
-        loserNextMatchId: null,
-        loserNextSlot: null
-      })
-    )
-  }
-
-  for (let i = 0; i < r1.length; i += 1) {
-    const target = r2[Math.floor(i / 2)]
-    r1[i].nextMatchId = target.id
-    r1[i].nextSlot = i % 2 === 0 ? 'A' : 'B'
-  }
-
-  // --- Нижняя сетка ---
-  // BYE в первом туре не дают проигравшего: не резервируем под них слоты LB,
-  // иначе появляются матчи без соперника (баг на любом n ≠ 2^k, не только нечётном).
-  const isByeMatch = (match: CupMatch) => match.status === 'done' && !match.playerBId
-
-  const lbDrop: CupMatch[] = []
-  for (let i = 0; i < r2Count; i += 1) {
-    const feederA = r1[i * 2]
-    const feederB = r1[i * 2 + 1]
-    const liveFeeders = [feederA, feederB].filter((match) => !isByeMatch(match))
-
-    const drop = pushMatch({
-      id: cupUid('m'),
-      roundKey: r2Count === 1 ? 'lb-final' : 'lb-r2',
-      roundLabel: r2Count === 1 ? 'Нижняя · финал' : 'Нижняя · тур 2',
-      bracketSide: 'losers',
-      order: i,
-      playerAId: null,
-      playerBId: null,
-      nextMatchId: null,
-      nextSlot: null,
-      loserNextMatchId: null,
-      loserNextSlot: null
-    })
-    lbDrop.push(drop)
-
-    r2[i].loserNextMatchId = drop.id
-    r2[i].loserNextSlot = 'B'
-
-    if (liveFeeders.length === 2) {
-      const lb = pushMatch({
-        id: cupUid('m'),
-        roundKey: 'lb-r1',
-        roundLabel: 'Нижняя · тур 1',
-        bracketSide: 'losers',
-        order: i,
-        playerAId: null,
-        playerBId: null,
-        nextMatchId: drop.id,
-        nextSlot: 'A',
-        loserNextMatchId: null,
-        loserNextSlot: null
-      })
-      feederA.loserNextMatchId = lb.id
-      feederA.loserNextSlot = 'A'
-      feederB.loserNextMatchId = lb.id
-      feederB.loserNextSlot = 'B'
-    } else if (liveFeeders.length === 1) {
-      // Один реальный матч R1 + BYE: проигравший сразу в drop (слот A).
-      liveFeeders[0].loserNextMatchId = drop.id
-      liveFeeders[0].loserNextSlot = 'A'
-      for (const feeder of [feederA, feederB]) {
-        if (isByeMatch(feeder)) {
-          feeder.loserNextMatchId = null
-          feeder.loserNextSlot = null
-        }
-      }
-    } else {
-      // Оба R1 — BYE: в drop придёт только проигравший R2 → авто-BYE в re-entry.
-      feederA.loserNextMatchId = null
-      feederA.loserNextSlot = null
-      feederB.loserNextMatchId = null
-      feederB.loserNextSlot = null
-    }
-  }
-
-  // --- Возврат в основную сетку и олимпийка до финала ---
-  let current: CupMatch[] = []
-  const reEntryCount = r2Count
-  const reEntryPlayers = reEntryCount * 2
-
-  for (let i = 0; i < reEntryCount; i += 1) {
-    const isFinal = reEntryCount === 1
-    current.push(
-      pushMatch({
-        id: cupUid('m'),
-        roundKey: isFinal ? 'de-final' : reEntryCount === 2 ? 'wb-semi' : `se-r${reEntryPlayers}`,
-        roundLabel: isFinal ? 'Финал' : reEntryCount === 2 ? 'Полуфинал' : roundLabelSe(reEntryPlayers, false),
-        bracketSide: isFinal ? 'final' : 'winners',
-        order: i,
-        playerAId: null,
-        playerBId: null,
-        nextMatchId: null,
-        nextSlot: null,
-        loserNextMatchId: null,
-        loserNextSlot: null
-      })
-    )
-  }
-
-  for (let i = 0; i < reEntryCount; i += 1) {
-    r2[i].nextMatchId = current[i].id
-    r2[i].nextSlot = 'A'
-    lbDrop[i].nextMatchId = current[i].id
-    lbDrop[i].nextSlot = 'B'
-  }
-
-  while (current.length > 1) {
-    const nextCount = current.length / 2
-    const isFinal = nextCount === 1
+  let prevWb = r1
+  let matchesInRound = size / 2
+  while (matchesInRound > 1) {
+    const nextCount = matchesInRound / 2
+    const isWbFinal = nextCount === 1
     const bracketPlayers = nextCount * 2
-    const nextRound: CupMatch[] = []
+    const round: CupMatch[] = []
     for (let i = 0; i < nextCount; i += 1) {
-      nextRound.push(
+      round.push(
         pushMatch({
           id: cupUid('m'),
-          roundKey: isFinal ? 'de-final' : nextCount === 2 ? 'wb-semi' : `se-r${bracketPlayers}`,
-          roundLabel: isFinal ? 'Финал' : nextCount === 2 ? 'Полуфинал' : roundLabelSe(bracketPlayers, false),
-          bracketSide: isFinal ? 'final' : 'winners',
+          roundKey: isWbFinal ? 'wb-final' : `se-r${bracketPlayers}`,
+          roundLabel: isWbFinal ? 'Верхняя · финал' : roundLabelSe(bracketPlayers, false),
+          bracketSide: 'winners',
           order: i,
           playerAId: null,
           playerBId: null,
@@ -414,12 +300,174 @@ export const buildDoubleElimination = (inputPlayers: CupPlayer[]): BracketBuildR
         })
       )
     }
-    for (let i = 0; i < current.length; i += 1) {
-      const target = nextRound[Math.floor(i / 2)]
-      current[i].nextMatchId = target.id
-      current[i].nextSlot = i % 2 === 0 ? 'A' : 'B'
+    for (let i = 0; i < prevWb.length; i += 1) {
+      const target = round[Math.floor(i / 2)]
+      prevWb[i].nextMatchId = target.id
+      prevWb[i].nextSlot = i % 2 === 0 ? 'A' : 'B'
     }
-    current = nextRound
+    wbRounds.push(round)
+    prevWb = round
+    matchesInRound = nextCount
+  }
+
+  // --- Losers bracket ---
+  // Sources feeding the next LB column: LB match winners or a direct R1 loser (BYE skip).
+  type LbSource =
+    | { type: 'match'; match: CupMatch }
+    | { type: 'r1-loser'; match: CupMatch }
+
+  let lbSources: (LbSource | null)[] = []
+  let lbRoundNo = 1
+
+  // LB R1: adjacent WB R1 losers (skip BYE feeders; keep null slots for alignment).
+  const r1Pairs = wbRounds[0].length / 2
+  for (let i = 0; i < r1Pairs; i += 1) {
+    const feederA = wbRounds[0][i * 2]
+    const feederB = wbRounds[0][i * 2 + 1]
+    const live = [feederA, feederB].filter((match) => !isByeMatch(match))
+
+    if (live.length === 2) {
+      const lb = pushMatch({
+        id: cupUid('m'),
+        roundKey: 'lb-r1',
+        roundLabel: 'Нижняя · тур 1',
+        bracketSide: 'losers',
+        order: i,
+        playerAId: null,
+        playerBId: null,
+        nextMatchId: null,
+        nextSlot: null,
+        loserNextMatchId: null,
+        loserNextSlot: null
+      })
+      feederA.loserNextMatchId = lb.id
+      feederA.loserNextSlot = 'A'
+      feederB.loserNextMatchId = lb.id
+      feederB.loserNextSlot = 'B'
+      lbSources.push({ type: 'match', match: lb })
+    } else if (live.length === 1) {
+      lbSources.push({ type: 'r1-loser', match: live[0] })
+      for (const feeder of [feederA, feederB]) {
+        if (isByeMatch(feeder)) {
+          feeder.loserNextMatchId = null
+          feeder.loserNextSlot = null
+        }
+      }
+    } else {
+      feederA.loserNextMatchId = null
+      feederA.loserNextSlot = null
+      feederB.loserNextMatchId = null
+      feederB.loserNextSlot = null
+      lbSources.push(null)
+    }
+  }
+  lbRoundNo = 2
+
+  // For each later WB round: drop-in with crossover, then optional consolidation.
+  for (let r = 1; r < wbRounds.length; r += 1) {
+    const wbRound = wbRounds[r]
+    const dropCount = wbRound.length
+    const isLastWb = r === wbRounds.length - 1
+    const sources: (LbSource | null)[] = Array.from(
+      { length: dropCount },
+      (_, i) => lbSources[i] ?? null
+    )
+
+    const dropRound: CupMatch[] = []
+    for (let i = 0; i < dropCount; i += 1) {
+      const isLbFinal = isLastWb && dropCount === 1
+      const drop = pushMatch({
+        id: cupUid('m'),
+        roundKey: isLbFinal ? 'lb-final' : `lb-r${lbRoundNo}`,
+        roundLabel: isLbFinal ? 'Нижняя · финал' : `Нижняя · тур ${lbRoundNo}`,
+        bracketSide: 'losers',
+        order: i,
+        playerAId: null,
+        playerBId: null,
+        nextMatchId: null,
+        nextSlot: null,
+        loserNextMatchId: null,
+        loserNextSlot: null
+      })
+      dropRound.push(drop)
+
+      const src = sources[i]
+      if (src?.type === 'match') {
+        src.match.nextMatchId = drop.id
+        src.match.nextSlot = 'A'
+      } else if (src?.type === 'r1-loser') {
+        src.match.loserNextMatchId = drop.id
+        src.match.loserNextSlot = 'A'
+      }
+
+      const wbLoserFrom = wbRound[crossover(i, dropCount)]
+      wbLoserFrom.loserNextMatchId = drop.id
+      wbLoserFrom.loserNextSlot = 'B'
+    }
+
+    if (!(isLastWb && dropCount === 1)) {
+      lbRoundNo += 1
+    }
+
+    let nextSources: (LbSource | null)[] = dropRound.map((match) => ({
+      type: 'match' as const,
+      match
+    }))
+
+    if (!isLastWb && dropRound.length > 1) {
+      const consCount = dropRound.length / 2
+      const consRound: CupMatch[] = []
+      for (let i = 0; i < consCount; i += 1) {
+        const cons = pushMatch({
+          id: cupUid('m'),
+          roundKey: `lb-r${lbRoundNo}`,
+          roundLabel: `Нижняя · тур ${lbRoundNo}`,
+          bracketSide: 'losers',
+          order: i,
+          playerAId: null,
+          playerBId: null,
+          nextMatchId: null,
+          nextSlot: null,
+          loserNextMatchId: null,
+          loserNextSlot: null
+        })
+        consRound.push(cons)
+        dropRound[i * 2].nextMatchId = cons.id
+        dropRound[i * 2].nextSlot = 'A'
+        dropRound[i * 2 + 1].nextMatchId = cons.id
+        dropRound[i * 2 + 1].nextSlot = 'B'
+      }
+      lbRoundNo += 1
+      nextSources = consRound.map((match) => ({ type: 'match' as const, match }))
+    }
+
+    lbSources = nextSources
+  }
+
+  // Grand final: undefeated WB champion vs LB champion.
+  const wbFinal = wbRounds[wbRounds.length - 1][0]
+  const lbChampionSource = lbSources.find((src) => src != null) ?? null
+  const grand = pushMatch({
+    id: cupUid('m'),
+    roundKey: 'de-final',
+    roundLabel: 'Финал',
+    bracketSide: 'final',
+    order: 0,
+    playerAId: null,
+    playerBId: null,
+    nextMatchId: null,
+    nextSlot: null,
+    loserNextMatchId: null,
+    loserNextSlot: null
+  })
+  wbFinal.nextMatchId = grand.id
+  wbFinal.nextSlot = 'A'
+  if (lbChampionSource?.type === 'match') {
+    lbChampionSource.match.nextMatchId = grand.id
+    lbChampionSource.match.nextSlot = 'B'
+  } else if (lbChampionSource?.type === 'r1-loser') {
+    lbChampionSource.match.loserNextMatchId = grand.id
+    lbChampionSource.match.loserNextSlot = 'B'
   }
 
   for (const match of matches) {

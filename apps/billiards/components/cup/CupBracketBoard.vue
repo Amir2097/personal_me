@@ -216,13 +216,17 @@ onBeforeUnmount(() => {
           </div>
           <div class="bracket-board__players">
             <p>
-              <span class="truncate">{{ nameOf(node.match.playerAId) }}</span>
+              <span class="bracket-board__name" :title="nameOf(node.match.playerAId)">{{
+                nameOf(node.match.playerAId)
+              }}</span>
               <span class="bracket-board__score" :class="scoreClass(node.match, 'A')">{{
                 node.match.framesA
               }}</span>
             </p>
             <p>
-              <span class="truncate">{{ nameOf(node.match.playerBId) }}</span>
+              <span class="bracket-board__name" :title="nameOf(node.match.playerBId)">{{
+                nameOf(node.match.playerBId)
+              }}</span>
               <span class="bracket-board__score" :class="scoreClass(node.match, 'B')">{{
                 node.match.framesB
               }}</span>

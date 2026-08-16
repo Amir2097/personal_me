@@ -38,6 +38,7 @@ Traffic:
 - Play, brackets and TV work without hub login. Device JWT talks to `billiards-api`.
 - Hub SSO is optional cloud identity. Page `/hobby` can open the service as a guest or with SSO when already signed in.
 - Integration key `billiards` still enables `go billiards` from the terminal.
+- Standalone (no hub): `docker compose -f docker-compose.billiards.yml up --build`.
 
 ## Scalability Notes
 

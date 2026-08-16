@@ -49,13 +49,19 @@ not `/billiards/`. TV links and favicons follow that base.
 5. **Club internals later.** Staff, tables, billing — not a second brand name.
 6. **Install package.** Compose with UI + API + postgres. No hub frontend.
    Env: domain, SMTP, JWT secret. Still «Цифровое Сукно».
+   Done for local/prod-shaped preview: `docker-compose.billiards.yml` +
+   `apps/billiards/Dockerfile.prod`.
 
-Do not split the git repo before phase 6 has a second real install.
+Do not split the git repo before a second real install exists.
 
-## Standalone preview
+Hub backend no longer owns Sukno models/services. Historical Alembic
+revisions `013`–`016` stay; `alembic/env.py` ignores Sukno tables so
+autogenerate cannot drop them from the shared DB.
+
+## Standalone (prod images)
 
 ```bash
 docker compose -f docker-compose.billiards.yml up --build
 ```
 
-UI at `http://localhost:8080/` (or `:3010/`), API at `http://localhost:8010`.
+UI at `http://localhost:8080/` (nginx) or `:3010/`, API at `http://localhost:8010`.

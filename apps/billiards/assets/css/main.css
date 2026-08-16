@@ -801,6 +801,7 @@ html[data-theme='dark'] .mode-option__badge {
   position: absolute;
   min-height: 88px;
   padding: 0.55rem 0.7rem 0.5rem;
+  overflow: hidden;
   text-align: left;
   border: 1px solid transparent;
   border-radius: var(--radius-panel);
@@ -860,6 +861,7 @@ html[data-theme='dark'] .mode-option__badge {
   margin-top: 0.4rem;
   display: grid;
   gap: 0.28rem;
+  min-width: 0;
 }
 
 .bracket-board__players p {
@@ -868,11 +870,21 @@ html[data-theme='dark'] .mode-option__badge {
   align-items: center;
   justify-content: space-between;
   gap: 0.5rem;
+  min-width: 0;
   font-size: 0.9rem;
   font-weight: 600;
 }
 
+.bracket-board__name {
+  flex: 1 1 0;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .bracket-board__score {
+  flex: 0 0 auto;
   min-width: 1.1rem;
   text-align: right;
   font-family: 'JetBrains Mono', monospace;

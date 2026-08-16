@@ -11,11 +11,6 @@ from app.models.project import Project  # noqa: F401
 from app.models.refresh_token import RefreshToken  # noqa: F401
 from app.models.sso_code import SsoCode  # noqa: F401
 from app.models.user import User  # noqa: F401
-from app.models.kolkhoz_session import KolkhozSession  # noqa: F401
-from app.models.kolkhoz_game import KolkhozGame  # noqa: F401
-from app.models.academy_progress import AcademyProgress  # noqa: F401
-from app.models.cup_session import CupSession  # noqa: F401
-from app.models.cup_tournament import CupTournament  # noqa: F401
 
 engine = create_engine(settings.postgres_dsn, echo=False)
 

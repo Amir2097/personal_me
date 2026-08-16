@@ -20,9 +20,20 @@ npm run dev
 
 ## Docker
 
-- Основной стек: `billiards` + `billiards-api` в корневом `docker-compose.yml`, nginx `/billiards/`.
-- Свой контур (главная `/`): `docker compose -f docker-compose.billiards.yml up --build`
-  → `http://localhost:8080/`.
+- Основной стек (dev): `billiards` + `billiards-api` в корневом `docker-compose.yml`, nginx `/billiards/`.
+- Standalone **prod** (главная `/`, без хаба):
+
+```bash
+docker compose -f docker-compose.billiards.yml up --build
+```
+
+  → UI `http://localhost:8080/`, API docs `http://localhost:8010/api/sukno/docs`.
+
+Сборка только образа UI:
+
+```bash
+docker build -f apps/billiards/Dockerfile.prod -t sukno-ui ./apps/billiards
+```
 
 ## Режимы
 
