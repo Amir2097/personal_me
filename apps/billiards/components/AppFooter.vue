@@ -4,6 +4,18 @@ const { brandName, tagline } = useSuknoSeo()
 const suknoAuth = useSuknoAuth()
 const year = new Date().getFullYear()
 const name = computed(() => brandName.value || String(config.public.brandName || 'Цифровое Сукно'))
+const footerConfigReady = ref(false)
+
+onMounted(async () => {
+  if (!suknoAuth.config.value) {
+    try {
+      await suknoAuth.loadConfig()
+    } catch {
+      /* offline */
+    }
+  }
+  footerConfigReady.value = true
+})
 </script>
 
 <template>
@@ -36,7 +48,9 @@ const name = computed(() => brandName.value || String(config.public.brandName ||
             </template>
             <template v-else>
               <li><NuxtLink to="/auth/login" class="footer-link">Войти</NuxtLink></li>
-              <li><NuxtLink to="/auth/register" class="footer-link">Регистрация</NuxtLink></li>
+              <li v-if="footerConfigReady && suknoAuth.registrationAllowed.value">
+                <NuxtLink to="/auth/register" class="footer-link">Регистрация</NuxtLink>
+              </li>
             </template>
           </ul>
         </div>

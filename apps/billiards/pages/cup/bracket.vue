@@ -1,8 +1,10 @@
 <script setup lang="ts">
 import { cupFormatTitle, cupRaceLabel, matchStatusLabel } from '~/utils/cupLabels'
+import { downloadCupExcel } from '~/utils/exportCupExcel'
 
 const store = useCupStore()
 const history = useCupHistory()
+const sync = useCupSync()
 const saveHint = ref('')
 
 onMounted(() => store.hydrate())
@@ -27,7 +29,14 @@ const saveHistory = async () => {
 
 const openMatch = async (id: string) => {
   store.setActiveMatch(id)
-  await navigateTo(`/cup/match/${id}`)
+  await navigateTo({
+    path: `/cup/match/${id}`,
+    query: sync.roomCode.value ? { room: sync.roomCode.value } : {}
+  })
+}
+
+const exportExcel = () => {
+  downloadCupExcel(store.exportSnapshot())
 }
 </script>
 
@@ -41,10 +50,13 @@ const openMatch = async (id: string) => {
         <button type="button" class="btn-ghost text-sm" :disabled="history.saving.value" @click="saveHistory">
           Сохранить в историю
         </button>
+        <button type="button" class="btn-ghost text-sm" @click="exportExcel">Excel</button>
       </div>
       <p v-if="saveHint" class="mt-2 text-sm text-cloth-chalk">{{ saveHint }}</p>
 
       <CupTournamentSwitcher compact class="mt-4" />
+
+      <SyncPanel variant="cup" class="mt-4" />
 
       <section class="hero-surface mt-4 rounded-2xl px-5 py-4 sm:px-6">
         <div class="flex flex-wrap items-end justify-between gap-3">

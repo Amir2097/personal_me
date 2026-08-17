@@ -45,7 +45,7 @@ def push_kolkhoz_session(
     session: Session = Depends(get_session),
 ) -> KolkhozSessionPushResponse:
     """Хост пушит полный JSON состояния Pinia."""
-    row = kolkhoz_sync_service.push_state(session, code, actor.username, payload.state)
+    row = kolkhoz_sync_service.push_state(session, code, actor.username, payload.state, payload.base_revision)
     return KolkhozSessionPushResponse(
         code=row.code,
         revision=row.revision,

@@ -8,6 +8,7 @@ from sqlalchemy.pool import StaticPool
 from sqlmodel import Session, SQLModel, create_engine
 
 from app.core import db
+from app.core.config import settings
 from app.core.db import get_session
 from app.main import app
 from app.services.auth_service import ensure_initial_admin
@@ -24,6 +25,8 @@ def client_fixture(monkeypatch: pytest.MonkeyPatch) -> Generator[TestClient, Non
     SQLModel.metadata.create_all(test_engine)
     db.engine = test_engine
     monkeypatch.setattr("app.core.db.create_db_and_tables", lambda: SQLModel.metadata.create_all(test_engine))
+    monkeypatch.setattr("app.core.migrations.run_migrations", lambda: SQLModel.metadata.create_all(test_engine))
+    monkeypatch.setattr("app.main.run_migrations", lambda: SQLModel.metadata.create_all(test_engine))
 
     with Session(test_engine) as session:
         ensure_initial_admin(session)
@@ -54,6 +57,15 @@ def register_user(client: TestClient, username: str, email: str, password: str =
             "email": email,
             "accept_terms": True,
         },
+    )
+
+
+def operator_headers(client: TestClient) -> dict[str, str]:
+    """Initial admin (operator+) for sync and admin API tests."""
+    return login_headers(
+        client,
+        settings.initial_admin_username,
+        settings.initial_admin_password,
     )
 
 

@@ -57,9 +57,8 @@ const remove = async (id: number) => {
           <AppIcon name="clipboard" class="text-cloth-accent" /> История партий
         </h3>
         <p class="mt-1 text-xs text-cloth-muted">
-          Это <strong class="text-cloth-chalk">снимки по кнопке</strong>, не автозапись.
-          В снимок попадает всё текущее состояние: туры, докупы, выбывшие, банк и призовые.
-          После первого сохранения можно обновлять ту же запись по ходу турнира.
+          Снимки в облако: вручную кнопкой ниже или автоматически раз в ~1,5 мин при активной партии
+          (если API доступен). В снимок попадает всё состояние: туры, докупы, выбывшие, банк.
         </p>
         <p class="mt-2 text-xs text-cloth-accent">Сейчас в сессии: {{ history.sessionHint.value }}</p>
         <p v-if="!isSignedIn" class="mt-2 text-xs text-cloth-muted">

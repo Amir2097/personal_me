@@ -99,6 +99,7 @@ useHead({ title: 'Безопасность · 2FA' })
       </div>
 
       <div v-else-if="setup" class="mt-5 space-y-3">
+        <TotpQrCode :otpauth-url="setup.otpauth_url" />
         <p class="break-all font-mono text-xs text-cloth-muted">{{ setup.secret }}</p>
         <a
           :href="setup.otpauth_url"

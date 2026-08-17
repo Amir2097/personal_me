@@ -11,7 +11,7 @@ from sqlmodel import Session, select
 from app.core.config import settings
 from app.core.cookies import SUKNO_ACCESS_COOKIE, SUKNO_REFRESH_COOKIE
 from app.core.db import get_session
-from app.core.roles import can_sync_room, role_at_least
+from app.core.roles import can_report_cup_score, can_sync_room, role_at_least
 from app.core.security import create_access_token, decode_token
 from app.models.sukno_user import SuknoUser
 
@@ -149,7 +149,24 @@ def require_sync_actor(
     if not can_sync_room(identity.source, identity.role):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Комнаты синхронизации доступны операторам зала или локальному режиму без входа.",
+            detail="Вести трансляцию на табло могут только оператор или администратор. Просмотр по ссылке доступен всем.",
+        )
+    return GameActor(
+        username=identity.username,
+        source=identity.source,
+        role=identity.role,
+    )
+
+
+def require_account_actor(
+    session: Session = Depends(get_session),
+    username: str = Depends(get_current_username),
+) -> GameActor:
+    identity = resolve_identity(session, username)
+    if not can_report_cup_score(identity.source):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Чтобы внести результат, войдите в аккаунт Цифрового Сукна.",
         )
     return GameActor(
         username=identity.username,

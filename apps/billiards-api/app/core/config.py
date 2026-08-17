@@ -39,6 +39,8 @@ class Settings(BaseSettings):
     totp_issuer: str = "Цифровое Сукно"
     uploads_dir: str = "uploads"
     avatar_max_bytes: int = 2 * 1024 * 1024
+    sync_room_code_length: int = 8
+    sync_room_ttl_hours: int = 12
 
     model_config = SettingsConfigDict(
         env_file=".env",

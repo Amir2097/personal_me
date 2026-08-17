@@ -4,20 +4,81 @@ import { cupRaceLabel } from '~/utils/cupLabels'
 const route = useRoute()
 const store = useCupStore()
 const sync = useCupSync()
+const suknoAuth = useSuknoAuth()
+const { canSyncRoom } = useGameAccess()
 
 const matchId = computed(() => String(route.params.id || ''))
-const tvLink = computed(() => sync.tvUrl.value)
+const eventBusy = ref(false)
+const eventError = ref('')
 
-onMounted(() => {
-  store.hydrate()
-  sync.hydrateMeta()
-  if (matchId.value) store.setActiveMatch(matchId.value)
+const isHost = computed(() => sync.role.value === 'host')
+const isFollower = computed(() => sync.role.value === 'follower')
+const myLogin = computed(() => (suknoAuth.profile.value?.username || '').trim().toLowerCase())
+
+const match = computed(() => store.matchById(matchId.value))
+const playerA = computed(() => store.playerById(match.value?.playerAId ?? null))
+const playerB = computed(() => store.playerById(match.value?.playerBId ?? null))
+const nameA = computed(() => playerA.value?.name || '—')
+const nameB = computed(() => playerB.value?.name || '—')
+
+const linkedToPair = computed(() => {
+  const login = myLogin.value
+  if (!login) return false
+  return (
+    (playerA.value?.username || '').trim().toLowerCase() === login ||
+    (playerB.value?.username || '').trim().toLowerCase() === login
+  )
 })
 
-const ensureHostRoom = async () => {
-  if (!sync.roomCode.value) await sync.createRoom()
-  else await sync.pushNow()
-}
+const matchOpen = computed(
+  () => Boolean(match.value && match.value.status !== 'done' && match.value.playerAId && match.value.playerBId)
+)
+
+/** Operator on the host device scores locally (existing pulpit). */
+const canScoreLocal = computed(() => matchOpen.value && (!sync.isLive.value || isHost.value))
+
+/** Pair on a phone scores through the room API. */
+const canScorePair = computed(
+  () => matchOpen.value && isFollower.value && Boolean(sync.roomCode.value) && linkedToPair.value
+)
+
+const canClaimA = computed(
+  () =>
+    Boolean(match.value?.playerAId) &&
+    suknoAuth.isAccountUser.value &&
+    sync.roomCode.value &&
+    !(playerA.value?.username || '').trim()
+)
+
+const canClaimB = computed(
+  () =>
+    Boolean(match.value?.playerBId) &&
+    suknoAuth.isAccountUser.value &&
+    sync.roomCode.value &&
+    !(playerB.value?.username || '').trim()
+)
+
+const matchShareUrl = computed(() => {
+  if (!import.meta.client || !sync.roomCode.value) return ''
+  const url = new URL(window.location.href)
+  url.searchParams.set('room', sync.roomCode.value)
+  return url.toString()
+})
+
+onMounted(async () => {
+  store.hydrate()
+  sync.hydrateMeta()
+  const room = typeof route.query.room === 'string' ? route.query.room : ''
+  if (room && sync.role.value !== 'host') {
+    await sync.joinRoom(room)
+  }
+  if (matchId.value) store.setActiveMatch(matchId.value)
+  try {
+    await suknoAuth.fetchMe()
+  } catch {
+    /* guest */
+  }
+})
 
 let tickTimer: ReturnType<typeof setInterval> | null = null
 onMounted(() => {
@@ -27,10 +88,6 @@ onBeforeUnmount(() => {
   if (tickTimer) clearInterval(tickTimer)
 })
 
-const match = computed(() => store.matchById(matchId.value))
-const nameA = computed(() => store.playerById(match.value?.playerAId ?? null)?.name || '—')
-const nameB = computed(() => store.playerById(match.value?.playerBId ?? null)?.name || '—')
-
 const clockLabel = computed(() => {
   const ms = store.shotClock.remainingMs
   const sec = Math.ceil(ms / 1000)
@@ -39,9 +96,67 @@ const clockLabel = computed(() => {
   return `${m}:${String(s).padStart(2, '0')}`
 })
 
-const canScore = computed(
-  () => Boolean(match.value && match.value.status !== 'done' && match.value.playerAId && match.value.playerBId)
-)
+const runPairEvent = async (
+  action: 'add_ball' | 'undo_ball' | 'award_frame' | 'complete',
+  extra: { side?: 'A' | 'B'; winner_id?: string } = {}
+) => {
+  eventError.value = ''
+  eventBusy.value = true
+  try {
+    await sync.postMatchEvent({
+      match_id: matchId.value,
+      action,
+      ...extra
+    })
+  } catch (error: unknown) {
+    eventError.value = error instanceof Error ? error.message : 'Не удалось отправить результат'
+  } finally {
+    eventBusy.value = false
+  }
+}
+
+const claim = async (playerId: string) => {
+  eventError.value = ''
+  eventBusy.value = true
+  try {
+    await sync.claimPlayer(playerId)
+  } catch (error: unknown) {
+    eventError.value = error instanceof Error ? error.message : 'Не удалось привязать слот'
+  } finally {
+    eventBusy.value = false
+  }
+}
+
+const copyMatchLink = async () => {
+  if (!matchShareUrl.value) return
+  try {
+    await navigator.clipboard.writeText(matchShareUrl.value)
+  } catch {
+    /* ignore */
+  }
+}
+
+const addBall = (side: 'A' | 'B') => {
+  if (canScorePair.value) void runPairEvent('add_ball', { side })
+  else store.addBall(matchId.value, side)
+}
+
+const undoBall = (side: 'A' | 'B') => {
+  if (canScorePair.value) void runPairEvent('undo_ball', { side })
+  else store.undoBall(matchId.value, side)
+}
+
+const awardFrame = (side: 'A' | 'B') => {
+  if (canScorePair.value) void runPairEvent('award_frame', { side })
+  else store.awardFrame(matchId.value, side)
+}
+
+const complete = (winnerId: string) => {
+  if (canScorePair.value) void runPairEvent('complete', { winner_id: winnerId })
+  else store.completeMatch(matchId.value, winnerId)
+}
+
+const scoringEnabled = computed(() => (canScoreLocal.value || canScorePair.value) && !eventBusy.value)
 </script>
 
 <template>
@@ -51,24 +166,27 @@ const canScore = computed(
         <NuxtLink to="/cup/bracket" class="btn-ghost text-sm">← Сетка</NuxtLink>
         <NuxtLink to="/cup/tv" class="btn-ghost text-sm">Табло турнира</NuxtLink>
         <button
-          v-if="sync.role.value !== 'follower'"
+          v-if="matchShareUrl && isHost"
           type="button"
           class="btn-ghost text-sm"
-          @click="ensureHostRoom"
+          @click="copyMatchLink"
         >
-          {{ sync.roomCode.value ? `Код TV: ${sync.roomCode.value}` : 'Создать код TV' }}
+          Ссылка для пары
         </button>
-        <a
-          v-if="tvLink"
-          :href="tvLink"
-          target="_blank"
-          rel="noopener"
-          class="btn-ghost text-sm"
-        >
-          Открыть TV по коду
-        </a>
       </div>
-      <p v-if="sync.syncError.value" class="mt-2 text-sm text-amber-300">{{ sync.syncError.value }}</p>
+
+      <p v-if="isFollower && linkedToPair" class="mt-3 text-xs text-cloth-accent">
+        Вы в паре этого матча — счёт уходит на табло сразу.
+      </p>
+      <p v-else-if="isFollower && suknoAuth.isAccountUser.value && matchOpen" class="mt-3 text-xs text-cloth-muted">
+        Нажмите «Это я», чтобы привязать аккаунт к своему слоту и вносить результат.
+      </p>
+      <p v-else-if="isFollower && !suknoAuth.isAccountUser.value" class="mt-3 text-xs text-cloth-muted">
+        Чтобы пара сама вносила счёт, войдите в аккаунт.
+        <NuxtLink to="/auth/login" class="text-cloth-accent">Вход</NuxtLink>
+      </p>
+      <p v-if="eventError" class="mt-2 text-sm text-amber-700">{{ eventError }}</p>
+      <p v-if="sync.syncError.value" class="mt-2 text-sm text-amber-700">{{ sync.syncError.value }}</p>
 
       <section v-if="!match" class="card-surface mt-4 p-5">
         <p class="text-sm text-cloth-muted">Матч не найден.</p>
@@ -89,18 +207,28 @@ const canScore = computed(
           <div class="card-surface p-5">
             <p class="text-xs uppercase tracking-wider text-cloth-muted">Игрок A</p>
             <h2 class="mt-1 font-display text-2xl font-bold">{{ nameA }}</h2>
+            <p v-if="playerA?.username" class="mt-1 text-[11px] text-cloth-muted">аккаунт {{ playerA.username }}</p>
             <p class="score-num mt-4 text-6xl font-bold text-gradient">{{ match.framesA }}</p>
             <p class="mt-1 text-sm text-cloth-muted">партии</p>
             <p class="mt-4 text-2xl font-bold">{{ match.ballsA }} <span class="text-sm font-normal text-cloth-muted">шаров</span></p>
             <div class="mt-4 flex flex-wrap gap-2">
-              <button type="button" class="btn-primary text-sm" :disabled="!canScore" @click="store.addBall(match.id, 'A')">
+              <button type="button" class="btn-primary text-sm" :disabled="!scoringEnabled" @click="addBall('A')">
                 + Шар
               </button>
-              <button type="button" class="btn-ghost text-sm" :disabled="!canScore" @click="store.undoBall(match.id, 'A')">
+              <button type="button" class="btn-ghost text-sm" :disabled="!scoringEnabled" @click="undoBall('A')">
                 − Шар
               </button>
-              <button type="button" class="btn-ghost text-sm" :disabled="!canScore" @click="store.awardFrame(match.id, 'A')">
+              <button type="button" class="btn-ghost text-sm" :disabled="!scoringEnabled" @click="awardFrame('A')">
                 Партия A
+              </button>
+              <button
+                v-if="canClaimA"
+                type="button"
+                class="btn-ghost text-sm"
+                :disabled="eventBusy"
+                @click="claim(match.playerAId!)"
+              >
+                Это я
               </button>
             </div>
           </div>
@@ -108,18 +236,28 @@ const canScore = computed(
           <div class="card-surface p-5">
             <p class="text-xs uppercase tracking-wider text-cloth-muted">Игрок B</p>
             <h2 class="mt-1 font-display text-2xl font-bold">{{ nameB }}</h2>
+            <p v-if="playerB?.username" class="mt-1 text-[11px] text-cloth-muted">аккаунт {{ playerB.username }}</p>
             <p class="score-num mt-4 text-6xl font-bold text-gradient">{{ match.framesB }}</p>
             <p class="mt-1 text-sm text-cloth-muted">партии</p>
             <p class="mt-4 text-2xl font-bold">{{ match.ballsB }} <span class="text-sm font-normal text-cloth-muted">шаров</span></p>
             <div class="mt-4 flex flex-wrap gap-2">
-              <button type="button" class="btn-primary text-sm" :disabled="!canScore" @click="store.addBall(match.id, 'B')">
+              <button type="button" class="btn-primary text-sm" :disabled="!scoringEnabled" @click="addBall('B')">
                 + Шар
               </button>
-              <button type="button" class="btn-ghost text-sm" :disabled="!canScore" @click="store.undoBall(match.id, 'B')">
+              <button type="button" class="btn-ghost text-sm" :disabled="!scoringEnabled" @click="undoBall('B')">
                 − Шар
               </button>
-              <button type="button" class="btn-ghost text-sm" :disabled="!canScore" @click="store.awardFrame(match.id, 'B')">
+              <button type="button" class="btn-ghost text-sm" :disabled="!scoringEnabled" @click="awardFrame('B')">
                 Партия B
+              </button>
+              <button
+                v-if="canClaimB"
+                type="button"
+                class="btn-ghost text-sm"
+                :disabled="eventBusy"
+                @click="claim(match.playerBId!)"
+              >
+                Это я
               </button>
             </div>
           </div>
@@ -141,7 +279,7 @@ const canScore = computed(
                 v-if="!store.shotClock.running"
                 type="button"
                 class="btn-primary text-sm"
-                :disabled="!canScore"
+                :disabled="!canScoreLocal"
                 @click="store.startShotClock()"
               >
                 Старт
@@ -150,11 +288,14 @@ const canScore = computed(
                 v-else
                 type="button"
                 class="btn-ghost text-sm"
+                :disabled="!canScoreLocal"
                 @click="store.pauseShotClock()"
               >
                 Пауза
               </button>
-              <button type="button" class="btn-ghost text-sm" @click="store.resetShotClock()">Сброс</button>
+              <button type="button" class="btn-ghost text-sm" :disabled="!canScoreLocal" @click="store.resetShotClock()">
+                Сброс
+              </button>
             </div>
           </div>
         </section>
@@ -163,14 +304,17 @@ const canScore = computed(
           Матч завершён.
           Победитель: {{ store.playerById(match.winnerId)?.name || '—' }}
         </p>
-        <div v-else-if="canScore" class="mt-4 flex flex-wrap gap-2">
-          <button type="button" class="btn-ghost text-sm" @click="store.completeMatch(match.id, match.playerAId!)">
+        <div v-else-if="scoringEnabled" class="mt-4 flex flex-wrap gap-2">
+          <button type="button" class="btn-ghost text-sm" @click="complete(match.playerAId!)">
             Победа {{ nameA }}
           </button>
-          <button type="button" class="btn-ghost text-sm" @click="store.completeMatch(match.id, match.playerBId!)">
+          <button type="button" class="btn-ghost text-sm" @click="complete(match.playerBId!)">
             Победа {{ nameB }}
           </button>
         </div>
+        <p v-else-if="isFollower && matchOpen && canSyncRoom" class="mt-4 text-xs text-cloth-muted">
+          Вы смотрите трансляцию. Счёт с пульта оператора или из привязанной пары.
+        </p>
       </section>
     </main>
   </div>

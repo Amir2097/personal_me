@@ -16,11 +16,16 @@ type SessionGetResponse = {
   state: Record<string, unknown>
 }
 
+type SessionCreateResponse = {
+  code: string
+  revision: number
+}
+
 /**
  * Host pushes cup Pinia state; TV polls by room code.
  */
 export const useCupSync = () => {
-  const { apiUrl, authHeaders, withCredentials, ensureAuthenticated } = useHubAuth()
+  const { apiUrl, authHeaders, username, ensureAuthenticated } = useHubAuth()
   const { canSyncRoom, syncDeniedMessage } = useGameAccess()
   const { appHref } = useAppBase()
   const store = useCupStore()
@@ -29,7 +34,9 @@ export const useCupSync = () => {
   const role = useState<CupSyncRole>('cup-room-role', () => null)
   const revision = useState<number>('cup-room-revision', () => 0)
   const syncError = useState<string>('cup-sync-error', () => '')
+  const lastPushedAt = useState<string | null>('cup-last-pushed', () => null)
   const roomStatus = useState<CupRoomLiveStatus>('cup-room-status', () => 'idle')
+  const endedMessage = useState<string>('cup-room-ended-msg', () => '')
   const applyingRemote = useState<boolean>('cup-applying-remote', () => false)
 
   let pushTimer: ReturnType<typeof setTimeout> | null = null
@@ -64,14 +71,20 @@ export const useCupSync = () => {
     }
   }
 
-  const clearRoom = () => {
+  const clearRoomMeta = () => {
     stopPolling()
     roomCode.value = null
     role.value = null
     revision.value = 0
+    lastPushedAt.value = null
     syncError.value = ''
-    roomStatus.value = 'idle'
     persistMeta()
+  }
+
+  const clearRoom = () => {
+    roomStatus.value = 'idle'
+    endedMessage.value = ''
+    clearRoomMeta()
   }
 
   const applyRemoteState = (remote: SessionGetResponse) => {
@@ -87,52 +100,93 @@ export const useCupSync = () => {
     }
   }
 
+  const markEnded = (message: string) => {
+    stopPolling()
+    const code = roomCode.value
+    roomStatus.value = 'ended'
+    endedMessage.value =
+      message || (code ? `Трансляция по коду ${code} завершена.` : 'Трансляция завершена.')
+    roomCode.value = null
+    role.value = null
+    revision.value = 0
+    lastPushedAt.value = null
+    syncError.value = ''
+    persistMeta()
+  }
+
   const pushNow = async () => {
-    if (role.value !== 'host' || !roomCode.value || applyingRemote.value) return
-    if (roomStatus.value !== 'live') return
-    await ensureAuthenticated()
-    const res = await fetch(apiUrl(`/api/v1/cup/sessions/${encodeURIComponent(roomCode.value)}`), {
-      method: 'PUT',
-      ...withCredentials,
-      headers: { ...authHeaders(), 'Content-Type': 'application/json' },
-      body: JSON.stringify({ state: store.exportSnapshot() })
-    })
-    if (!res.ok) {
-      syncError.value = 'Ошибка синхронизации'
-      return
+    if (role.value !== 'host' || !roomCode.value || roomStatus.value !== 'live') return
+    if (applyingRemote.value) return
+    try {
+      const remote = await $fetch<SessionGetResponse>(
+        apiUrl(`/api/v1/cup/sessions/${encodeURIComponent(roomCode.value)}`)
+      )
+      if (remote.revision > revision.value) {
+        applyRemoteState(remote)
+        return
+      }
+      const result = await $fetch<{ revision: number; updated_at: string }>(
+        apiUrl(`/api/v1/cup/sessions/${encodeURIComponent(roomCode.value)}`),
+        {
+          method: 'PUT',
+          credentials: 'include',
+          headers: authHeaders(),
+          body: {
+            state: store.exportSnapshot(),
+            base_revision: revision.value
+          }
+        }
+      )
+      revision.value = result.revision
+      lastPushedAt.value = result.updated_at
+      syncError.value = ''
+    } catch (error: unknown) {
+      const status = (error as { statusCode?: number; status?: number })?.statusCode
+        || (error as { status?: number })?.status
+      if (status === 404) {
+        markEnded('Комната закрыта на сервере. Создайте новую.')
+        return
+      }
+      syncError.value = error instanceof Error ? error.message : 'Не удалось отправить обновление'
     }
-    const data = (await res.json()) as { revision: number }
-    revision.value = data.revision
   }
 
   const createRoom = async () => {
     syncError.value = ''
+    endedMessage.value = ''
     if (!canSyncRoom.value) {
       syncError.value = syncDeniedMessage
       return null
     }
-    await ensureAuthenticated()
-    const res = await fetch(apiUrl('/api/v1/cup/sessions'), {
-      method: 'POST',
-      ...withCredentials,
-      headers: { ...authHeaders(), 'Content-Type': 'application/json' }
-    })
-    if (res.status === 403) {
-      syncError.value = syncDeniedMessage
+    const ok = await ensureAuthenticated()
+    if (!ok) {
+      syncError.value = 'Нужен вход оператора и связь с API Цифрового Сукна.'
       return null
     }
-    if (!res.ok) {
-      syncError.value = 'Не удалось создать комнату. Проверьте, что API Цифрового Сукна запущен.'
+    try {
+      const created = await $fetch<SessionCreateResponse>(apiUrl('/api/v1/cup/sessions'), {
+        method: 'POST',
+        credentials: 'include',
+        headers: authHeaders()
+      })
+      roomCode.value = created.code
+      role.value = 'host'
+      revision.value = created.revision
+      roomStatus.value = 'live'
+      persistMeta()
+      await pushNow()
+      startPolling()
+      return created.code
+    } catch (error) {
+      const status = (error as { statusCode?: number })?.statusCode
+      syncError.value =
+        status === 403
+          ? syncDeniedMessage
+          : error instanceof Error
+            ? error.message
+            : 'Не удалось создать комнату'
       return null
     }
-    const data = (await res.json()) as { code: string; revision: number }
-    roomCode.value = data.code
-    role.value = 'host'
-    revision.value = data.revision
-    roomStatus.value = 'live'
-    persistMeta()
-    await pushNow()
-    return data.code
   }
 
   const schedulePush = () => {
@@ -149,56 +203,138 @@ export const useCupSync = () => {
     schedulePush()
   }
 
-  const startPolling = () => {
-    stopPolling()
-    pollTimer = setInterval(async () => {
-      if (!roomCode.value || role.value !== 'follower') return
-      const res = await fetch(apiUrl(`/api/v1/cup/sessions/${encodeURIComponent(roomCode.value)}`))
-      if (res.status === 404) {
-        roomStatus.value = 'ended'
-        clearRoom()
-        return
+  const pollOnce = async () => {
+    if (!roomCode.value || roomStatus.value !== 'live') return
+    if (role.value !== 'follower' && role.value !== 'host') return
+    try {
+      const remote = await $fetch<SessionGetResponse>(
+        apiUrl(`/api/v1/cup/sessions/${encodeURIComponent(roomCode.value)}`)
+      )
+      if (remote.revision !== revision.value) {
+        applyRemoteState(remote)
       }
-      if (!res.ok) return
-      const data = (await res.json()) as SessionGetResponse
-      if (data.revision !== revision.value) applyRemoteState(data)
-    }, 1000)
+      syncError.value = ''
+    } catch {
+      if (role.value === 'host') return
+      markEnded('Ведущий завершил трансляцию или комната недоступна. Введите новый код.')
+    }
+  }
+
+  const startPolling = (intervalMs = 1000) => {
+    stopPolling()
+    if (!import.meta.client) return
+    pollTimer = setInterval(() => {
+      void pollOnce()
+    }, intervalMs)
   }
 
   const joinRoom = async (code: string) => {
     syncError.value = ''
+    endedMessage.value = ''
     const normalized = code.trim().toUpperCase()
-    const res = await fetch(apiUrl(`/api/v1/cup/sessions/${encodeURIComponent(normalized)}`))
-    if (!res.ok) {
-      syncError.value = 'Комната не найдена'
+    if (normalized.length < 4) {
+      syncError.value = 'Введите код комнаты'
       return false
     }
-    const data = (await res.json()) as SessionGetResponse
-    roomCode.value = data.code
-    role.value = 'follower'
-    roomStatus.value = 'live'
-    applyRemoteState(data)
-    persistMeta()
-    startPolling()
-    return true
+    try {
+      const remote = await $fetch<SessionGetResponse>(
+        apiUrl(`/api/v1/cup/sessions/${encodeURIComponent(normalized)}`)
+      )
+      roomCode.value = remote.code
+      role.value = 'follower'
+      revision.value = remote.revision
+      roomStatus.value = 'live'
+      persistMeta()
+      applyRemoteState(remote)
+      startPolling()
+      return true
+    } catch {
+      syncError.value = 'Комната не найдена или трансляция уже завершена'
+      roomStatus.value = 'idle'
+      return false
+    }
   }
 
   const resumeFollowerIfPossible = async () => {
     hydrateMeta()
+    if (role.value === 'host' && roomCode.value) {
+      startPolling()
+      return true
+    }
     if (role.value !== 'follower' || !roomCode.value) return false
-    return joinRoom(roomCode.value)
+    const code = roomCode.value
+    const ok = await joinRoom(code)
+    if (!ok) {
+      markEnded(`Комната ${code} больше недоступна. Введите новый код.`)
+      return false
+    }
+    return true
   }
 
   const closeRoom = async () => {
-    if (role.value === 'host' && roomCode.value) {
-      await ensureAuthenticated()
-      await fetch(apiUrl(`/api/v1/cup/sessions/${encodeURIComponent(roomCode.value)}`), {
-        method: 'DELETE',
-        ...withCredentials,
-        headers: { ...authHeaders() }
-      })
+    syncError.value = ''
+    if (role.value !== 'host' || !roomCode.value) {
+      clearRoom()
+      return true
     }
+    const code = roomCode.value
+    try {
+      await $fetch(apiUrl(`/api/v1/cup/sessions/${encodeURIComponent(code)}`), {
+        method: 'DELETE',
+        credentials: 'include',
+        headers: authHeaders()
+      })
+    } catch {
+      /* room may already be gone */
+    }
+    clearRoomMeta()
+    roomStatus.value = 'idle'
+    endedMessage.value = `Трансляция ${code} завершена.`
+    if (import.meta.client) store.hydrate()
+    return true
+  }
+
+  const leaveRoom = () => {
     clearRoom()
+  }
+
+  const applyServerSession = (remote: SessionGetResponse) => {
+    applyRemoteState(remote)
+  }
+
+  const claimPlayer = async (playerId: string) => {
+    if (!roomCode.value) return false
+    const remote = await $fetch<SessionGetResponse>(
+      apiUrl(`/api/v1/cup/sessions/${encodeURIComponent(roomCode.value)}/claim`),
+      {
+        method: 'POST',
+        credentials: 'include',
+        headers: authHeaders(),
+        body: { player_id: playerId }
+      }
+    )
+    applyRemoteState(remote)
+    return true
+  }
+
+  const postMatchEvent = async (payload: {
+    match_id: string
+    action: 'add_ball' | 'undo_ball' | 'award_frame' | 'complete'
+    side?: 'A' | 'B'
+    winner_id?: string
+  }) => {
+    if (!roomCode.value) return false
+    const remote = await $fetch<SessionGetResponse>(
+      apiUrl(`/api/v1/cup/sessions/${encodeURIComponent(roomCode.value)}/events`),
+      {
+        method: 'POST',
+        credentials: 'include',
+        headers: authHeaders(),
+        body: payload
+      }
+    )
+    applyRemoteState(remote)
+    return true
   }
 
   const tvUrl = computed(() => {
@@ -206,12 +342,18 @@ export const useCupSync = () => {
     return appHref('cup/tv', { room: roomCode.value })
   })
 
+  const isLive = computed(() => roomStatus.value === 'live' && Boolean(roomCode.value))
+
   return {
     roomCode,
     role,
     revision,
     syncError,
+    lastPushedAt,
     roomStatus,
+    endedMessage,
+    isLive,
+    username,
     tvUrl,
     hydrateMeta,
     createRoom,
@@ -220,8 +362,14 @@ export const useCupSync = () => {
     onLocalChange,
     pushNow,
     closeRoom,
+    leaveRoom,
     clearRoom,
     startPolling,
-    resumeFollowerIfPossible
+    stopPolling,
+    resumeFollowerIfPossible,
+    pollOnce,
+    applyServerSession,
+    claimPlayer,
+    postMatchEvent
   }
 }

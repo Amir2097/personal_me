@@ -9,6 +9,7 @@ const config = useRuntimeConfig()
 const route = useRoute()
 const { hydrateTheme } = useClothTheme()
 const sync = useKolkhozSync()
+const { appHref } = useAppBase()
 
 useHead({
   title: 'Табло · Колхоз'
@@ -163,6 +164,13 @@ const needsRoomCode = computed(
     sync.roomStatus.value === 'idle'
 )
 
+const joinQrUrl = computed(() => {
+  const code = (sync.roomCode.value || roomInput.value || '').trim().toUpperCase()
+  if (code.length < 4) return ''
+  if (!import.meta.client) return ''
+  return appHref('tv', { room: code })
+})
+
 const roundRateShort = computed(() => {
   const round = store.currentRound
   if (!round) return '—'
@@ -255,6 +263,13 @@ const toggleMute = () => {
             <p v-if="sync.roomStatus.value === 'ended'" class="tv-topbar__alert">
               {{ sync.endedMessage.value || 'Встреча завершена.' }} Введите новый код.
             </p>
+            <RoomQrCode
+              v-if="joinQrUrl"
+              class="mt-3"
+              :url="joinQrUrl"
+              label="Отсканируйте на TV или телефоне"
+              :size="140"
+            />
           </template>
           <template v-else-if="isRemoteFollower">
             <div class="tv-topbar__room-row">

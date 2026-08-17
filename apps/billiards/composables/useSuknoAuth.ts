@@ -1,3 +1,8 @@
+import {
+  isAdminRole,
+  isOperatorRole
+} from '~/utils/suknoRoles'
+
 export type SuknoAuthConfig = {
   allow_registration: boolean
   require_email_verification: boolean
@@ -274,11 +279,11 @@ export const useSuknoAuth = () => {
   }
 
   const isAccountUser = computed(() => profile.value?.source === 'account')
-  const isAdmin = computed(() => Boolean(profile.value?.is_admin || profile.value?.role === 'admin'))
-  const isOperator = computed(() => {
-    const role = profile.value?.role
-    return role === 'operator' || role === 'admin'
-  })
+  const isAdmin = computed(() =>
+    isAdminRole(profile.value?.role, profile.value?.is_admin)
+  )
+  const isOperator = computed(() => isOperatorRole(profile.value?.role))
+  const registrationAllowed = computed(() => config.value?.allow_registration !== false)
 
   return {
     config,
@@ -286,6 +291,7 @@ export const useSuknoAuth = () => {
     isAccountUser,
     isAdmin,
     isOperator,
+    registrationAllowed,
     loadConfig,
     fetchMe,
     trySuknoRefresh,

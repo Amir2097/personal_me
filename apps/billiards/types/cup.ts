@@ -12,6 +12,8 @@ export type CupPlayer = {
   id: string
   name: string
   seed: number
+  /** Sukno login — pair can report this match's score. */
+  username?: string
   /** Informational only in v1 (no handicap). */
   category?: 1 | 2 | 3
 }
@@ -142,7 +144,12 @@ export const normalizeCupBundle = (
       ...empty.tournament,
       ...(partial.tournament || {})
     },
-    players: Array.isArray(partial.players) ? partial.players : [],
+    players: Array.isArray(partial.players)
+      ? partial.players.map((player) => ({
+          ...player,
+          username: (player.username || '').trim()
+        }))
+      : [],
     matches: Array.isArray(partial.matches)
       ? partial.matches.map((match, index) => ({
           ...match,

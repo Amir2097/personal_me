@@ -20,29 +20,6 @@ engine = create_engine(settings.postgres_dsn, echo=False)
 
 def create_db_and_tables() -> None:
     SQLModel.metadata.create_all(engine)
-    _ensure_profile_columns()
-
-
-def _ensure_profile_columns() -> None:
-    """Add profile columns on existing databases (create_all does not ALTER)."""
-    from sqlalchemy import inspect, text
-
-    inspector = inspect(engine)
-    if "sukno_user" not in inspector.get_table_names():
-        return
-    existing = {col["name"] for col in inspector.get_columns("sukno_user")}
-    additions = {
-        "avatar_url": "ALTER TABLE sukno_user ADD COLUMN avatar_url VARCHAR NOT NULL DEFAULT ''",
-        "bio": "ALTER TABLE sukno_user ADD COLUMN bio VARCHAR NOT NULL DEFAULT ''",
-        "location": "ALTER TABLE sukno_user ADD COLUMN location VARCHAR NOT NULL DEFAULT ''",
-        "telegram": "ALTER TABLE sukno_user ADD COLUMN telegram VARCHAR NOT NULL DEFAULT ''",
-    }
-    missing = [sql for name, sql in additions.items() if name not in existing]
-    if not missing:
-        return
-    with engine.begin() as conn:
-        for stmt in missing:
-            conn.execute(text(stmt))
 
 
 def get_session():

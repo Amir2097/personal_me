@@ -9,7 +9,7 @@ export default defineNuxtPlugin(() => {
     sync.onLocalChange()
   })
 
-  if (sync.role.value === 'follower' && sync.roomCode.value) {
+  if (sync.roomCode.value && (sync.role.value === 'follower' || sync.role.value === 'host')) {
     void sync.resumeFollowerIfPossible()
   }
 })

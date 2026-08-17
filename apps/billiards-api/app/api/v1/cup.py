@@ -7,9 +7,9 @@ from fastapi import APIRouter, Depends, Query, Response
 from pydantic import BaseModel, Field
 from sqlmodel import Session
 
-from app.api.deps import get_current_username, require_sync_actor
+from app.api.deps import get_current_username, require_account_actor, require_sync_actor
 from app.core.db import get_session
-from app.services import cup_history_service, cup_sync_service
+from app.services import cup_history_service, cup_live_service, cup_sync_service
 
 router = APIRouter(prefix="/cup", tags=["cup"])
 
@@ -21,6 +21,7 @@ class CupSessionCreateResponse(BaseModel):
 
 class CupSessionPushRequest(BaseModel):
     state: dict[str, Any] = Field(default_factory=dict)
+    base_revision: int | None = None
 
 
 class CupSessionPushResponse(BaseModel):
@@ -35,6 +36,17 @@ class CupSessionGetResponse(BaseModel):
     updated_at: datetime
     owner_username: str
     state: dict[str, Any]
+
+
+class CupClaimRequest(BaseModel):
+    player_id: str = Field(min_length=1)
+
+
+class CupMatchEventRequest(BaseModel):
+    match_id: str = Field(min_length=1)
+    action: str = Field(min_length=1)
+    side: str | None = None
+    winner_id: str | None = None
 
 
 class CupTournamentSaveRequest(BaseModel):
@@ -73,7 +85,7 @@ def push_cup_session(
     actor=Depends(require_sync_actor),
     session: Session = Depends(get_session),
 ) -> CupSessionPushResponse:
-    row = cup_sync_service.push_state(session, code, actor.username, payload.state)
+    row = cup_sync_service.push_state(session, code, actor.username, payload.state, payload.base_revision)
     return CupSessionPushResponse(code=row.code, revision=row.revision, updated_at=row.updated_at)
 
 
@@ -100,6 +112,48 @@ def close_cup_session(
 ) -> Response:
     cup_sync_service.close_session(session, code, actor.username)
     return Response(status_code=204)
+
+
+@router.post("/sessions/{code}/claim", response_model=CupSessionGetResponse, summary="Привязать себя к игроку сетки")
+def claim_cup_player(
+    code: str,
+    payload: CupClaimRequest,
+    actor=Depends(require_account_actor),
+    session: Session = Depends(get_session),
+) -> CupSessionGetResponse:
+    row = cup_live_service.claim_player(session, code, actor, payload.player_id)
+    return CupSessionGetResponse(
+        code=row.code,
+        revision=row.revision,
+        updated_at=row.updated_at,
+        owner_username=row.owner_username,
+        state=row.state_json or {},
+    )
+
+
+@router.post("/sessions/{code}/events", response_model=CupSessionGetResponse, summary="Внести событие матча")
+def apply_cup_match_event(
+    code: str,
+    payload: CupMatchEventRequest,
+    actor=Depends(require_account_actor),
+    session: Session = Depends(get_session),
+) -> CupSessionGetResponse:
+    row = cup_live_service.apply_match_event(
+        session,
+        code,
+        actor,
+        match_id=payload.match_id,
+        action=payload.action.strip(),
+        side=payload.side,
+        winner_id=payload.winner_id,
+    )
+    return CupSessionGetResponse(
+        code=row.code,
+        revision=row.revision,
+        updated_at=row.updated_at,
+        owner_username=row.owner_username,
+        state=row.state_json or {},
+    )
 
 
 def _to_summary(row) -> CupTournamentSummary:
@@ -146,6 +200,19 @@ def get_cup_tournament(
         **_to_summary(row).model_dump(),
         state=row.state_json or {},
     )
+
+
+@router.put("/tournaments/{tournament_id}", response_model=CupTournamentSummary, summary="Обновить турнир в истории")
+def update_cup_tournament(
+    tournament_id: int,
+    payload: CupTournamentSaveRequest,
+    username: str = Depends(get_current_username),
+    session: Session = Depends(get_session),
+) -> CupTournamentSummary:
+    row = cup_history_service.update_tournament(
+        session, tournament_id, username, payload.state, payload.title
+    )
+    return _to_summary(row)
 
 
 @router.delete("/tournaments/{tournament_id}", status_code=204, summary="Удалить турнир из истории")

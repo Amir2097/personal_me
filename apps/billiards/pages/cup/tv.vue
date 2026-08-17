@@ -2,9 +2,12 @@
 import { cupFormatTitle, cupRaceLabel, matchStatusLabel } from '~/utils/cupLabels'
 import type { CupMatch } from '~/types/cup'
 
+definePageMeta({ layout: 'bare' })
+
 const store = useCupStore()
 const sync = useCupSync()
 const route = useRoute()
+const { appHref } = useAppBase()
 
 const joinCode = ref('')
 const clockLabel = computed(() => {
@@ -43,6 +46,13 @@ const finishedMatches = computed(() =>
 )
 
 const doneCount = computed(() => store.matches.filter((match) => match.status === 'done').length)
+
+const joinQrUrl = computed(() => {
+  const code = (sync.roomCode.value || joinCode.value || String(route.query.room || '')).trim().toUpperCase()
+  if (code.length < 4) return ''
+  if (!import.meta.client) return ''
+  return appHref('cup/tv', { room: code })
+})
 
 const nameOf = (id: string | null) => store.playerById(id)?.name || '—'
 
@@ -113,12 +123,18 @@ const onStorage = (event: StorageEvent) => {
           </button>
           <form
             v-if="sync.role.value !== 'host'"
-            class="flex gap-2"
+            class="flex flex-wrap items-end gap-2"
             @submit.prevent="sync.joinRoom(joinCode)"
           >
-            <input v-model="joinCode" class="field-input w-28 text-sm" placeholder="Код" />
+            <input v-model="joinCode" class="field-input w-28 text-sm uppercase" placeholder="Код" maxlength="8" />
             <button type="submit" class="btn-ghost text-sm">Подключить</button>
           </form>
+          <RoomQrCode
+            v-if="joinQrUrl && sync.role.value !== 'host'"
+            :url="joinQrUrl"
+            label="QR табло"
+            :size="120"
+          />
         </div>
       </div>
 

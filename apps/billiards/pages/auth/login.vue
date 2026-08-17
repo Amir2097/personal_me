@@ -1,11 +1,21 @@
 <script setup lang="ts">
 const route = useRoute()
 const suknoAuth = useSuknoAuth()
+const { hubEnabled, loginViaHub } = useHubAuth()
 
 const loginName = ref('')
 const password = ref('')
 const error = ref('')
 const busy = ref(false)
+const configReady = ref(false)
+
+onMounted(async () => {
+  try {
+    await suknoAuth.loadConfig()
+  } finally {
+    configReady.value = true
+  }
+})
 
 const submit = async () => {
   error.value = ''
@@ -51,10 +61,21 @@ useHead({ title: 'Вход' })
             {{ busy ? '…' : 'Войти' }}
           </button>
         </form>
+
+        <div v-if="hubEnabled" class="mt-4 space-y-2">
+          <p class="text-center text-xs text-cloth-muted">или</p>
+          <button type="button" class="btn-ghost w-full text-sm" @click="loginViaHub">
+            Войти через DAUTOVTECH
+          </button>
+          <p class="text-center text-[11px] text-cloth-muted">
+            Связать сессию с аккаунтом на портале разработчика.
+          </p>
+        </div>
+
         <p class="mt-3 text-center text-sm">
           <NuxtLink to="/auth/forgot-password" class="text-cloth-accent">Забыли пароль?</NuxtLink>
         </p>
-        <p class="mt-2 text-center text-sm text-cloth-muted">
+        <p v-if="configReady && suknoAuth.registrationAllowed.value" class="mt-2 text-center text-sm text-cloth-muted">
           Нет аккаунта?
           <NuxtLink to="/auth/register" class="text-cloth-accent">Регистрация</NuxtLink>
         </p>

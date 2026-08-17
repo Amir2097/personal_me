@@ -12,12 +12,13 @@ from sqlmodel import Session
 from app.api.v1.router import api_router
 from app.core import db
 from app.core.config import settings
+from app.core.migrations import run_migrations
 from app.services.auth_service import ensure_initial_admin
 
 
 @asynccontextmanager
 async def lifespan(_: FastAPI) -> AsyncIterator[None]:
-    db.create_db_and_tables()
+    run_migrations()
     Path(settings.uploads_dir).mkdir(parents=True, exist_ok=True)
     with Session(db.engine) as session:
         ensure_initial_admin(session)

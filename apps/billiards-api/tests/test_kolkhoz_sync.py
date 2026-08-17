@@ -1,10 +1,10 @@
 """Kolkhoz TV rooms."""
 
-from tests.conftest import auth_headers
+from tests.conftest import operator_headers
 
 
 def test_session_sync_flow(client):
-    headers = auth_headers(client)
+    headers = operator_headers(client)
     created = client.post("/api/v1/kolkhoz/sessions", headers=headers)
     assert created.status_code == 200
     code = created.json()["code"]

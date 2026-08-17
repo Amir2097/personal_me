@@ -38,9 +38,14 @@ def can_use_totp(role: str) -> bool:
 
 
 def can_sync_room(source: str, role: str | None) -> bool:
-    """TV/host sync: device, hub SSO, or Sukno operator/admin."""
-    if source in ("device", "hub", "legacy_admin"):
+    """TV/host sync: Sukno operator/admin or legacy admin key session."""
+    if source == "legacy_admin":
         return True
     if source == "account" and role:
         return role_at_least(role, "operator")
     return False
+
+
+def can_report_cup_score(source: str) -> bool:
+    """Logged-in Sukno/hub identity may claim a slot and report a pair result."""
+    return source in ("account", "hub", "legacy_admin")

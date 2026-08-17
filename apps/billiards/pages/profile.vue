@@ -31,11 +31,9 @@ const busyPassword = ref(false)
 const message = ref('')
 const error = ref('')
 
-const roleLabel = computed(() => {
-  if (role.value === 'admin') return 'Администратор'
-  if (role.value === 'operator') return 'Оператор'
-  return 'Игрок'
-})
+import { roleLabel as formatRoleLabel } from '~/utils/suknoRoles'
+
+const roleLabel = computed(() => formatRoleLabel(role.value))
 
 const formatDate = (value: string | null) => {
   if (!value) return '—'
@@ -289,6 +287,7 @@ useHead({ title: 'Профиль' })
             </button>
           </div>
           <div v-else-if="totpSetupData" class="space-y-3">
+            <TotpQrCode :otpauth-url="totpSetupData.otpauth_url" />
             <p class="break-all font-mono text-xs text-cloth-muted">{{ totpSetupData.secret }}</p>
             <a :href="totpSetupData.otpauth_url" class="break-all text-xs text-cloth-accent underline" target="_blank" rel="noopener">
               Открыть в приложении

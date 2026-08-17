@@ -9,9 +9,39 @@ from tests.conftest import (
 )
 
 
-def test_device_can_sync_kolkhoz(client):
+def test_device_cannot_sync_kolkhoz(client):
     headers = auth_headers(client)
-    assert client.post("/api/v1/kolkhoz/sessions", headers=headers).status_code == 200
+    assert client.post("/api/v1/kolkhoz/sessions", headers=headers).status_code == 403
+
+
+def test_can_sync_room_matrix():
+    from app.core.roles import can_sync_room
+
+    assert not can_sync_room("device", None)
+    assert not can_sync_room("hub", None)
+    assert can_sync_room("legacy_admin", "admin")
+    assert not can_sync_room("account", "player")
+    assert can_sync_room("account", "operator")
+    assert can_sync_room("account", "admin")
+
+
+def test_guest_can_read_kolkhoz_session_without_auth(client):
+    admin_headers = login_headers(
+        client,
+        settings.initial_admin_username,
+        settings.initial_admin_password,
+    )
+    created = client.post("/api/v1/kolkhoz/sessions", headers=admin_headers)
+    assert created.status_code == 200
+    code = created.json()["code"]
+    client.put(
+        f"/api/v1/kolkhoz/sessions/{code}",
+        headers=admin_headers,
+        json={"state": {"version": 1, "mode": "casual", "players": [], "events": []}},
+    )
+    fetched = client.get(f"/api/v1/kolkhoz/sessions/{code}")
+    assert fetched.status_code == 200
+    assert fetched.json()["state"]["mode"] == "casual"
 
 
 def test_player_account_cannot_sync_kolkhoz(client, monkeypatch):

@@ -24,8 +24,9 @@ This file is the extraction map. Do not put Sukno game data into hub
 | Play, brackets, TV | Local, no login | Same |
 | Brand | Fixed assets in `apps/billiards/public/brand/` | Same |
 | SEO / site copy | `/admin/seo`, table `sukno_site_settings` | Same |
-| Users | Device JWT, or hub username via SSO | Real operator login |
-| Sync rooms / history | `billiards-api` | Same service, own DB when a second install exists |
+| Users | Sukno accounts (player/operator/admin), device JWT, optional hub SSO | Same |
+| Sync rooms / history | `billiards-api`, 8-char codes, 12h TTL | PIN later |
+| Pair self-score | Linked `player.username` + `/cup/sessions/{code}/events` | Same |
 | Public site | Hub: `/billiards/`. Own domain: `NUXT_APP_BASE_URL=/` | Subdomain with `nginx/sukno.conf` |
 
 `NUXT_APP_BASE_URL` switches the mount. On a real domain the home page is `/`,
@@ -33,19 +34,19 @@ not `/billiards/`. TV links and favicons follow that base.
 
 ## Auth
 
-1. Middleware hydrates SSO if present.
-2. Else a stored hub JWT is accepted by billiards-api (shared `JWT_SECRET_KEY`).
-3. Else the UI mints a device token: `POST /api/v1/billiards/auth/device`.
-4. TV `GET /sessions/{code}` stays public.
-5. Admin: `SUKNO_ADMIN_KEY` → `POST /api/v1/site/admin/unlock` → JWT `typ=admin`.
-   UI at `/admin` (or `/billiards/admin` on the hub).
+1. Sukno accounts: register/login, cookies, email verification, 2FA for operator+.
+2. Device JWT for anonymous play (`POST /api/v1/billiards/auth/device`) — history/academy only; **not** sync rooms.
+3. Optional hub SSO if `NUXT_PUBLIC_HUB_URL` is set.
+4. TV `GET /sessions/{code}` stays public (kolkhoz and cup).
+5. Sync write (create/push/close): **operator** or **admin** only.
+6. Admin: Sukno account with role admin, or legacy `SUKNO_ADMIN_KEY` (dev only).
 
 ## Phases
 
 1. **Done.** App opens without hub redirect. Hub login is a button, not a gate.
 2. **Done.** Dedicated `billiards-api`. Device JWT. Brand fixed.
 3. **Done.** Own-domain path (`baseURL=/`), brand mark/logo/favicon.
-4. **This slice.** Sukno admin for SEO. Key-gated until operator accounts exist.
+4. **Done.** Sukno accounts, RBAC, admin UI, Alembic, prod checklist.
 5. **Club internals later.** Staff, tables, billing — not a second brand name.
 6. **Install package.** Compose with UI + API + postgres. No hub frontend.
    Env: domain, SMTP, JWT secret. Still «Цифровое Сукно».

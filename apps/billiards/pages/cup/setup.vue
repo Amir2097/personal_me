@@ -4,7 +4,7 @@ import { cupUid, nextPowerOfTwo } from '~/types/cup'
 import { CUP_DE_MAX_PLAYERS, CUP_SE_MAX_PLAYERS } from '~/utils/cupLabels'
 import { uniqueCupName } from '~/utils/cupNames'
 
-type DraftPlayer = { id: string; name: string }
+type DraftPlayer = { id: string; name: string; username: string }
 
 const store = useCupStore()
 const history = useCupHistory()
@@ -18,6 +18,7 @@ const shuffle = ref(false)
 const error = ref('')
 const nameHint = ref('')
 const draftName = ref('')
+const draftUsername = ref('')
 const players = ref<DraftPlayer[]>([])
 
 const maxPlayers = computed(() => (format.value === 'de' ? CUP_DE_MAX_PLAYERS : CUP_SE_MAX_PLAYERS))
@@ -60,8 +61,9 @@ const addPlayer = () => {
     error.value = 'Такой игрок уже в списке'
     return
   }
-  players.value.push({ id: cupUid('p'), name: value })
+  players.value.push({ id: cupUid('p'), name: value, username: draftUsername.value.trim() })
   draftName.value = ''
+  draftUsername.value = ''
 }
 
 const removePlayer = (id: string) => {
@@ -92,6 +94,7 @@ const start = async () => {
       raceTo: raceTo.value,
       shotClockSec: clockEnabled.value ? Math.max(10, shotClockSec.value || 45) : 0,
       playerNames: players.value.map((player) => player.name),
+      playerUsernames: players.value.map((player) => player.username),
       shuffle: shuffle.value
     })
     await navigateTo('/cup/bracket')
@@ -197,10 +200,21 @@ const start = async () => {
               placeholder="Имя игрока"
               autocomplete="off"
             />
+            <input
+              v-model="draftUsername"
+              class="field-input sm:w-44"
+              type="text"
+              maxlength="32"
+              placeholder="логин (необяз.)"
+              autocomplete="off"
+            />
             <button type="submit" class="btn-primary inline-flex items-center justify-center gap-2">
               <AppIcon name="user" size="sm" /> Добавить
             </button>
           </form>
+          <p class="mt-2 text-xs text-cloth-muted">
+            Логин аккаунта — чтобы пара сама вносила счёт с телефона. Можно привязать позже кнопкой «Это я» на пульте матча.
+          </p>
 
           <p class="mt-2 text-xs text-cloth-muted">
             Сейчас: {{ playerCount }} / {{ maxPlayers }}
@@ -217,7 +231,10 @@ const start = async () => {
               <PlayerAvatar :name="player.name" />
               <div class="min-w-0 flex-1">
                 <p class="truncate font-semibold text-cloth-chalk">{{ player.name }}</p>
-                <p class="text-[11px] text-cloth-muted">посев #{{ index + 1 }}</p>
+                <p class="text-[11px] text-cloth-muted">
+                  посев #{{ index + 1 }}
+                  <template v-if="player.username"> · {{ player.username }}</template>
+                </p>
               </div>
               <div class="flex shrink-0 gap-1">
                 <button

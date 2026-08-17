@@ -56,6 +56,12 @@ jobs:
         run: npm install
       - name: Run vitest
         run: npm test
+      - name: Install Playwright browser
+        run: npx playwright install chromium --with-deps
+      - name: Run Playwright smoke tests
+        run: npm run test:e2e -- e2e/smoke.spec.ts
+        env:
+          CI: true
 
   frontend:
     runs-on: ubuntu-latest

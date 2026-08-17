@@ -189,6 +189,7 @@ export const useCupStore = defineStore('cup', {
       raceTo: number
       shotClockSec: number
       playerNames: string[]
+      playerUsernames?: (string | null | undefined)[]
       shuffle?: boolean
     }) {
       const players: CupPlayer[] = payload.playerNames
@@ -197,7 +198,8 @@ export const useCupStore = defineStore('cup', {
         .map((name, index) => ({
           id: cupUid('p'),
           name,
-          seed: index + 1
+          seed: index + 1,
+          username: (payload.playerUsernames?.[index] || '').trim()
         }))
 
       if (players.length < 2) throw new Error('Нужно минимум 2 игрока')
@@ -240,6 +242,13 @@ export const useCupStore = defineStore('cup', {
       this.tournaments.push(bundle)
       this.activeTournamentId = bundle.tournament.id
       persist(this.$state)
+    },
+
+    linkPlayerUsername(playerId: string, username: string) {
+      this.mutateActive((bundle) => {
+        const player = bundle.players.find((item) => item.id === playerId)
+        if (player) player.username = username.trim()
+      })
     },
 
     setActiveMatch(matchId: string) {
