@@ -99,35 +99,35 @@ const onStorage = (event: StorageEvent) => {
 </script>
 
 <template>
-  <div>
+  <div class="tv-shell tv-shell--nested">
     <main class="page-shell page-shell--wide py-6">
       <div class="flex flex-wrap items-center justify-between gap-3">
         <div class="flex flex-wrap gap-2">
-          <NuxtLink to="/cup/bracket" class="btn-ghost text-sm">← Турнир</NuxtLink>
-          <NuxtLink to="/cup" class="btn-ghost text-sm">Список</NuxtLink>
+          <NuxtLink to="/cup/bracket" class="btn-ghost btn-touch">← Турнир</NuxtLink>
+          <NuxtLink to="/cup" class="btn-ghost btn-touch">Список</NuxtLink>
         </div>
         <div class="flex flex-wrap items-center gap-2">
           <template v-if="sync.role.value === 'host' && sync.roomCode.value">
             <span class="rounded-lg border border-cloth-border bg-cloth-card px-3 py-1 text-sm text-cloth-chalk">
               Код: <span class="font-semibold text-cloth-accent">{{ sync.roomCode.value }}</span>
             </span>
-            <button type="button" class="btn-ghost text-sm" @click="sync.closeRoom()">Закрыть комнату</button>
+            <button type="button" class="btn-ghost btn-touch" @click="sync.closeRoom()">Закрыть комнату</button>
           </template>
           <button
             v-else-if="sync.role.value !== 'follower'"
             type="button"
-            class="btn-primary text-sm"
+            class="btn-primary btn-touch"
             @click="ensureHostRoom"
           >
             Создать код для TV
           </button>
           <form
             v-if="sync.role.value !== 'host'"
-            class="flex flex-wrap items-end gap-2"
+            class="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:items-end"
             @submit.prevent="sync.joinRoom(joinCode)"
           >
-            <input v-model="joinCode" class="field-input w-28 text-sm uppercase" placeholder="Код" maxlength="8" />
-            <button type="submit" class="btn-ghost text-sm">Подключить</button>
+            <input v-model="joinCode" class="field-input w-full uppercase tracking-widest sm:w-32" placeholder="Код" maxlength="8" />
+            <button type="submit" class="btn-ghost btn-touch w-full sm:w-auto">Подключить</button>
           </form>
           <RoomQrCode
             v-if="joinQrUrl && sync.role.value !== 'host'"

@@ -10,6 +10,9 @@ frontend/.output/
 apps/billiards/node_modules/
 apps/billiards/.nuxt/
 apps/billiards/.output/
+apps/billiards/test-results/
+apps/billiards/playwright-report/
+apps/billiards/blob-report/
 
 .idea/
 .vscode/

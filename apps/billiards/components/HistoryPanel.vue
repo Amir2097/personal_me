@@ -68,8 +68,8 @@ const remove = async (id: number) => {
       </div>
     </div>
 
-    <div class="mt-4 flex flex-wrap items-end gap-2">
-      <label class="min-w-[12rem] flex-1 text-xs text-cloth-muted">
+    <div class="mt-4 flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-end">
+      <label class="min-w-0 flex-1 text-xs text-cloth-muted sm:min-w-[12rem]">
         Название (необязательно)
         <input
           v-model="titleDraft"
@@ -80,7 +80,7 @@ const remove = async (id: number) => {
       </label>
       <button
         type="button"
-        class="btn-primary text-xs"
+        class="btn-primary btn-touch w-full sm:w-auto"
         :disabled="history.saving.value"
         @click="save(false)"
       >
@@ -95,7 +95,7 @@ const remove = async (id: number) => {
       <button
         v-if="history.lastSavedId.value"
         type="button"
-        class="btn-ghost text-xs"
+        class="btn-ghost btn-touch w-full sm:w-auto"
         :disabled="history.saving.value"
         @click="save(true)"
       >
@@ -104,7 +104,7 @@ const remove = async (id: number) => {
       <button
         v-if="!compact"
         type="button"
-        class="btn-ghost text-xs"
+        class="btn-ghost btn-touch w-full sm:w-auto"
         :disabled="history.loading.value"
         @click="history.refresh()"
       >
@@ -144,11 +144,11 @@ const remove = async (id: number) => {
             · {{ new Date(item.updated_at || item.created_at).toLocaleString('ru-RU') }}
           </p>
         </div>
-        <div class="flex flex-wrap gap-1.5">
-          <button type="button" class="btn-primary py-1 text-xs" @click="restore(item.id)">
+        <div class="flex w-full flex-wrap gap-2 sm:w-auto">
+          <button type="button" class="btn-primary btn-touch flex-1 sm:flex-none" @click="restore(item.id)">
             Открыть
           </button>
-          <button type="button" class="btn-ghost py-1 text-xs text-red-500" @click="remove(item.id)">
+          <button type="button" class="btn-ghost btn-touch flex-1 text-red-500 sm:flex-none" @click="remove(item.id)">
             Удалить
           </button>
         </div>

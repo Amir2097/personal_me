@@ -107,7 +107,7 @@ const start = async () => {
 <template>
   <div>
     <main class="page-shell py-8">
-      <NuxtLink to="/cup" class="btn-ghost text-sm">← К турниру</NuxtLink>
+      <NuxtLink to="/cup" class="btn-ghost btn-touch">← К турниру</NuxtLink>
 
       <section class="hero-surface mt-4 rounded-2xl px-5 py-5 sm:px-6">
         <h1 class="font-display text-3xl font-bold text-cloth-chalk">Новый турнир</h1>
@@ -239,7 +239,7 @@ const start = async () => {
               <div class="flex shrink-0 gap-1">
                 <button
                   type="button"
-                  class="btn-ghost px-2 py-1 text-xs"
+                  class="btn-ghost btn-play"
                   :disabled="index === 0"
                   @click="movePlayer(index, -1)"
                 >
@@ -247,13 +247,13 @@ const start = async () => {
                 </button>
                 <button
                   type="button"
-                  class="btn-ghost px-2 py-1 text-xs"
+                  class="btn-ghost btn-play"
                   :disabled="index === players.length - 1"
                   @click="movePlayer(index, 1)"
                 >
                   ↓
                 </button>
-                <button type="button" class="btn-ghost px-2 py-1 text-xs" @click="removePlayer(player.id)">
+                <button type="button" class="btn-ghost btn-play" @click="removePlayer(player.id)">
                   ×
                 </button>
               </div>

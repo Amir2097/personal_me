@@ -122,13 +122,13 @@ const returnPotAt = (tableId: string) => {
             <p class="text-sm font-semibold text-cloth-accent">Тур {{ store.currentRound.number }} · {{ roundRateShort }}</p>
             <p class="text-xs font-medium text-cloth-muted">{{ roundMetaLabel }}</p>
           </div>
-          <button type="button" class="btn-primary inline-flex items-center gap-1.5 text-sm" @click="startTimer">
+          <button type="button" class="btn-primary btn-touch inline-flex items-center gap-1.5" @click="startTimer">
             <AppIcon name="clock" size="sm" /> Старт таймера
           </button>
           <button
             v-if="store.timerIsRunning"
             type="button"
-            class="btn-ghost inline-flex items-center gap-1.5 text-sm"
+            class="btn-ghost btn-touch inline-flex items-center gap-1.5"
             @click="store.pauseRoundTimer()"
           >
             <AppIcon name="pause" size="sm" /> Пауза
@@ -136,7 +136,7 @@ const returnPotAt = (tableId: string) => {
           <button
             v-if="store.timerIsPaused"
             type="button"
-            class="btn-ghost inline-flex items-center gap-1.5 text-sm"
+            class="btn-ghost btn-touch inline-flex items-center gap-1.5"
             @click="store.resumeRoundTimer()"
           >
             <AppIcon name="play" size="sm" /> Продолжить время
@@ -144,14 +144,14 @@ const returnPotAt = (tableId: string) => {
           <button
             v-if="isOrganizer"
             type="button"
-            class="btn-ghost inline-flex items-center gap-1.5 text-sm"
+            class="btn-ghost btn-touch inline-flex items-center gap-1.5"
             @click="reseatAndKeepTimer"
           >
             <AppIcon name="users" size="sm" /> Пересадить
           </button>
           <button
             type="button"
-            class="btn-ghost text-sm"
+            class="btn-ghost btn-touch"
             :disabled="store.tournament.currentRoundIndex >= store.tournament.rounds.length - 1"
             @click="nextRound"
           >
@@ -160,16 +160,16 @@ const returnPotAt = (tableId: string) => {
           <button
             v-if="!isOrganizer"
             type="button"
-            class="btn-ghost inline-flex items-center gap-1.5 text-sm"
+            class="btn-ghost btn-touch inline-flex items-center gap-1.5"
             :disabled="!store.events.length"
             @click="store.undoLast()"
           >
             <AppIcon name="undo" size="sm" /> Отмена
           </button>
-          <NuxtLink to="/tournament" class="btn-ghost inline-flex items-center gap-1.5 text-sm">
+          <NuxtLink to="/tournament" class="btn-ghost btn-touch inline-flex items-center gap-1.5">
             <AppIcon name="settings" size="sm" /> Настройки
           </NuxtLink>
-          <NuxtLink to="/tv" class="btn-ghost inline-flex items-center gap-1.5 text-sm">
+          <NuxtLink to="/tv" class="btn-ghost btn-touch inline-flex items-center gap-1.5">
             <AppIcon name="tv" size="sm" /> Табло
           </NuxtLink>
         </div>
@@ -214,7 +214,7 @@ const returnPotAt = (tableId: string) => {
               · ход
               <span class="text-cloth-accent">{{ potCursorName(table.id) }}</span>
             </p>
-            <button type="button" class="btn-ghost !px-2 !py-0.5 text-[10px]" @click="returnPotAt(table.id)">
+            <button type="button" class="btn-ghost btn-play" @click="returnPotAt(table.id)">
               Вернуть
             </button>
           </div>
@@ -257,7 +257,7 @@ const returnPotAt = (tableId: string) => {
                   <template v-if="!isOrganizer && player.status === 'active'">
                     <button
                       type="button"
-                      class="btn-primary !px-2 !py-0.5 text-[10px]"
+                      class="btn-primary btn-play"
                       @click="scoreAt(table.id, table.playerIds, player.id)"
                     >
                       + Шар
@@ -265,14 +265,14 @@ const returnPotAt = (tableId: string) => {
                     <button
                       v-if="potAt(table.id)?.passCursorPlayerId === player.id"
                       type="button"
-                      class="btn-ghost !px-2 !py-0.5 text-[10px]"
+                      class="btn-ghost btn-play"
                       @click="passMissAt(table.id, player.id)"
                     >
                       Мимо
                     </button>
                     <button
                       type="button"
-                      class="btn-ghost !px-2 !py-0.5 text-[10px]"
+                      class="btn-ghost btn-play"
                       :title="`В общак ${fineAmount} фиш.`"
                       @click="fineAt(table.id, table.playerIds, player.id)"
                     >
@@ -280,7 +280,7 @@ const returnPotAt = (tableId: string) => {
                     </button>
                     <button
                       type="button"
-                      class="btn-ghost !px-2 !py-0.5 text-[10px]"
+                      class="btn-ghost btn-play"
                       @click="store.dropout(table.id, player.id)"
                     >
                       Выбыл
@@ -290,7 +290,7 @@ const returnPotAt = (tableId: string) => {
                     <button
                       v-if="player.status === 'active'"
                       type="button"
-                      class="btn-ghost !px-2 !py-0.5 text-[10px]"
+                      class="btn-ghost btn-play"
                       @click="store.dropout(table.id, player.id)"
                     >
                       Убрать
@@ -298,7 +298,7 @@ const returnPotAt = (tableId: string) => {
                     <button
                       v-else
                       type="button"
-                      class="btn-primary !px-2 !py-0.5 text-[10px]"
+                      class="btn-primary btn-play"
                       @click="store.reinstate(player.id)"
                     >
                       Вернуть
@@ -346,7 +346,7 @@ const returnPotAt = (tableId: string) => {
             <div class="min-w-0 flex-1">
               <div class="flex flex-wrap items-center justify-between gap-1">
                 <span class="truncate text-sm">{{ player.name }}</span>
-                <button type="button" class="btn-ghost !px-2 !py-0.5 text-[10px]" @click="store.reinstate(player.id)">
+                <button type="button" class="btn-ghost btn-play" @click="store.reinstate(player.id)">
                   вернуть
                 </button>
               </div>

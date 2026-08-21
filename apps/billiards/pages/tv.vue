@@ -208,7 +208,7 @@ const toggleMute = () => {
 </script>
 
 <template>
-  <div class="min-h-screen px-4 py-4 text-cloth-chalk sm:px-6 sm:py-5 lg:px-8">
+  <div class="tv-shell text-cloth-chalk">
     <header class="tv-topbar rounded-2xl px-3 py-2.5 sm:px-4 sm:py-3">
       <div class="tv-topbar__row">
         <div class="tv-topbar__brand">
@@ -244,7 +244,7 @@ const toggleMute = () => {
               </label>
               <button
                 type="button"
-                class="btn-primary text-sm"
+                class="btn-primary btn-touch"
                 :disabled="joinBusy"
                 @click="connectRoom(roomInput)"
               >
@@ -253,7 +253,7 @@ const toggleMute = () => {
               <button
                 v-if="!isRemoteFollower"
                 type="button"
-                class="btn-ghost text-xs"
+                class="btn-ghost btn-touch"
                 @click="loadLocalPreview"
               >
                 Локально
@@ -278,10 +278,10 @@ const toggleMute = () => {
                 <span class="text-cloth-accent">{{ sync.roomCode.value }}</span>
                 · № {{ sync.revision.value }}
               </p>
-              <button type="button" class="btn-ghost text-xs" @click="showSwitchForm = true">
+              <button type="button" class="btn-ghost btn-touch" @click="showSwitchForm = true">
                 Сменить
               </button>
-              <button type="button" class="btn-ghost text-xs" @click="disconnectBoard">
+              <button type="button" class="btn-ghost btn-touch" @click="disconnectBoard">
                 Отключить
               </button>
             </div>

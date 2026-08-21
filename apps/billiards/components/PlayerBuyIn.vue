@@ -60,16 +60,16 @@ const submit = () => {
         <template v-if="!compact">Внёс: </template>
         <span class="font-semibold text-cloth-accent">{{ paid.toLocaleString('ru-RU') }} {{ currency }}</span>
       </span>
-      <button type="button" class="btn-ghost !px-2 !py-0.5 text-[10px]" @click="openForm('rebuy')">
+      <button type="button" class="btn-ghost btn-play" @click="openForm('rebuy')">
         + Докуп
       </button>
-      <button type="button" class="btn-ghost !px-2 !py-0.5 text-[10px]" @click="openForm('addon')">
+      <button type="button" class="btn-ghost btn-play" @click="openForm('addon')">
         + Дон
       </button>
       <button
         v-if="history.length"
         type="button"
-        class="text-[10px] text-cloth-muted underline-offset-2 hover:text-cloth-accent hover:underline"
+        class="min-h-10 px-2 text-xs text-cloth-muted underline-offset-2 hover:text-cloth-accent hover:underline sm:min-h-0 sm:text-[10px]"
         @click="historyOpen = !historyOpen"
       >
         {{ historyOpen ? 'скрыть' : `записи (${history.length})` }}
@@ -92,8 +92,8 @@ const submit = () => {
         </label>
       </div>
       <div class="mt-1.5 flex gap-2">
-        <button type="button" class="btn-primary flex-1 !py-1 text-xs" @click="submit">Записать</button>
-        <button type="button" class="btn-ghost !py-1 text-xs" @click="formOpen = false">Отмена</button>
+        <button type="button" class="btn-primary btn-play flex-1" @click="submit">Записать</button>
+        <button type="button" class="btn-ghost btn-play" @click="formOpen = false">Отмена</button>
       </div>
     </div>
 

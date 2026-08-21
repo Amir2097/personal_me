@@ -48,7 +48,7 @@ const removeTournament = (item: CupTournamentBundle) => {
 <template>
   <div>
     <main class="page-shell py-8">
-      <NuxtLink to="/" class="btn-ghost text-sm">← На главную</NuxtLink>
+      <NuxtLink to="/" class="btn-ghost btn-touch">← На главную</NuxtLink>
 
       <section class="hero-surface mt-4 px-6 py-9 sm:px-10 sm:py-12">
         <p class="section-eyebrow">
@@ -130,19 +130,19 @@ const removeTournament = (item: CupTournamentBundle) => {
                 </p>
               </div>
 
-              <div class="flex flex-wrap gap-2">
-                <button type="button" class="btn-primary text-sm" @click="openTournament(item.tournament.id)">
+              <div class="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:flex-wrap">
+                <button type="button" class="btn-primary btn-touch w-full sm:w-auto" @click="openTournament(item.tournament.id)">
                   {{ isActive(item.tournament.id) ? 'Сетка' : 'Открыть' }}
                 </button>
                 <button
                   type="button"
-                  class="btn-ghost text-sm"
+                  class="btn-ghost btn-touch w-full sm:w-auto"
                   :disabled="history.saving.value"
                   @click="saveTournament(item)"
                 >
                   В историю
                 </button>
-                <button type="button" class="btn-ghost text-sm" @click="removeTournament(item)">
+                <button type="button" class="btn-ghost btn-touch w-full sm:w-auto" @click="removeTournament(item)">
                   Удалить
                 </button>
               </div>

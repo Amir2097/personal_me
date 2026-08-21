@@ -115,7 +115,7 @@ const logout = async () => {
               </div>
             </div>
           </template>
-          <NuxtLink v-else-if="clientReady" to="/auth/login" class="btn-ghost py-1.5 text-xs">Войти</NuxtLink>
+          <NuxtLink v-else-if="clientReady" to="/auth/login" class="btn-ghost btn-touch px-3">Войти</NuxtLink>
         </ClientOnly>
       </div>
     </div>

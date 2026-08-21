@@ -30,6 +30,7 @@ const emit = defineEmits<{
 const viewport = ref<HTMLElement | null>(null)
 const panX = ref(0)
 const panY = ref(0)
+const scale = ref(1)
 const dragging = ref(false)
 const moved = ref(false)
 const origin = ref({ x: 0, y: 0, panX: 0, panY: 0 })
@@ -51,12 +52,17 @@ const scoreClass = (match: CupMatch, side: 'A' | 'B') => {
   return id === match.winnerId ? 'bracket-board__score--win' : 'bracket-board__score--lose'
 }
 
+const scaledSize = () => ({
+  width: layout.value.width * scale.value,
+  height: layout.value.height * scale.value
+})
+
 const clampPan = (x: number, y: number) => {
   const el = viewport.value
   if (!el) return { x, y }
   const viewW = el.clientWidth
   const viewH = el.clientHeight
-  const { width, height } = layout.value
+  const { width, height } = scaledSize()
   const minX = Math.min(0, viewW - width)
   const minY = Math.min(0, viewH - height)
   return {
@@ -110,19 +116,42 @@ const openMatch = (match: CupMatch, event: MouseEvent) => {
   emit('open', match.id)
 }
 
-const resetView = () => applyPan(0, 0)
+const fitView = () => {
+  const el = viewport.value
+  if (!el || !layout.value.width || !layout.value.height) return
+  const pad = 12
+  const sx = (el.clientWidth - pad) / layout.value.width
+  const sy = (el.clientHeight - pad) / layout.value.height
+  scale.value = Math.max(0.35, Math.min(1, sx, sy))
+  applyPan(0, 0)
+}
+
+const resetView = () => {
+  scale.value = 1
+  applyPan(0, 0)
+}
+
+const isNarrow = () =>
+  typeof window !== 'undefined' && window.matchMedia('(max-width: 640px)').matches
 
 watch(
-  () => [layout.value.width, layout.value.height],
+  () => [layout.value.width, layout.value.height, scale.value],
   () => applyPan(panX.value, panY.value)
 )
 
 onMounted(() => {
-  applyPan(0, 0)
-  window.addEventListener('resize', resetView)
+  if (isNarrow()) fitView()
+  else applyPan(0, 0)
+  window.addEventListener('resize', onResize)
 })
+
+const onResize = () => {
+  if (isNarrow()) fitView()
+  else applyPan(panX.value, panY.value)
+}
+
 onBeforeUnmount(() => {
-  window.removeEventListener('resize', resetView)
+  window.removeEventListener('resize', onResize)
 })
 </script>
 
@@ -131,13 +160,19 @@ onBeforeUnmount(() => {
     <div class="mb-3 flex flex-wrap items-center justify-between gap-2">
       <p class="text-sm text-cloth-muted">
         <template v-if="interactive">
-          Перетаскивайте поле курсором · клик по встрече открывает пульт · до {{ raceTo }} партий
+          <span class="sm:hidden">Тяните сетку пальцем · нажмите на матч · до {{ raceTo }} партий</span>
+          <span class="hidden sm:inline">
+            Перетаскивайте поле · клик по встрече открывает пульт · до {{ raceTo }} партий
+          </span>
         </template>
         <template v-else>
           Общая сетка турнира · до {{ raceTo }} партий · обновляется вместе со счётом
         </template>
       </p>
-      <button type="button" class="btn-ghost text-xs" @click="resetView">В начало</button>
+      <div class="flex flex-wrap gap-2">
+        <button type="button" class="btn-ghost text-xs" @click="fitView">Вписать</button>
+        <button type="button" class="btn-ghost text-xs" @click="resetView">100%</button>
+      </div>
     </div>
 
     <div
@@ -154,7 +189,7 @@ onBeforeUnmount(() => {
         :style="{
           width: `${layout.width}px`,
           height: `${layout.height}px`,
-          transform: `translate(${panX}px, ${panY}px)`
+          transform: `translate(${panX}px, ${panY}px) scale(${scale})`
         }"
       >
         <svg class="bracket-board__lines" :width="layout.width" :height="layout.height" aria-hidden="true">

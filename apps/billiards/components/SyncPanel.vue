@@ -110,16 +110,16 @@ const copyTvLink = async () => {
         />
       </div>
       <div class="flex flex-wrap gap-2">
-        <button type="button" class="btn-ghost text-xs" @click="copyCode">Копировать код</button>
-        <button type="button" class="btn-ghost text-xs" @click="copyTvLink">Копировать ссылку табло</button>
+        <button type="button" class="btn-ghost btn-touch" @click="copyCode">Копировать код</button>
+        <button type="button" class="btn-ghost btn-touch" @click="copyTvLink">Копировать ссылку табло</button>
         <NuxtLink
           :to="{ path: tvPath, query: { room: sync.roomCode.value } }"
-          class="btn-primary text-xs"
+          class="btn-primary btn-touch"
           target="_blank"
         >
           Открыть табло
         </NuxtLink>
-        <button type="button" class="btn-ghost text-xs" @click="sync.closeRoom()">Завершить трансляцию</button>
+        <button type="button" class="btn-ghost btn-touch" @click="sync.closeRoom()">Завершить трансляцию</button>
       </div>
     </div>
 
@@ -129,7 +129,7 @@ const copyTvLink = async () => {
         <strong class="text-cloth-accent">{{ sync.roomCode.value }}</strong>
         (обновление № {{ sync.revision.value }})
       </p>
-      <button type="button" class="btn-ghost text-xs" @click="sync.leaveRoom()">Отключиться</button>
+      <button type="button" class="btn-ghost btn-touch" @click="sync.leaveRoom()">Отключиться</button>
     </div>
 
     <div v-else class="mt-4 grid gap-3 sm:grid-cols-2">
@@ -138,7 +138,7 @@ const copyTvLink = async () => {
         <p class="mt-1 text-xs text-cloth-muted">{{ hostHint }}</p>
         <button
           type="button"
-          class="btn-primary mt-3 text-xs"
+          class="btn-primary btn-touch mt-3 w-full sm:w-auto"
           :disabled="busy || (ready && !sync.username.value) || !canSyncRoom"
           @click="startHost"
         >
@@ -156,15 +156,16 @@ const copyTvLink = async () => {
         <p class="mt-1 text-xs text-cloth-muted">
           Введите код с телефона ведущего — можно с телефона гостя, планшета или TV.
         </p>
-        <div class="mt-3 flex gap-2">
+        <div class="mt-3 flex flex-col gap-2 sm:flex-row">
           <input
             v-model="joinInput"
-            class="field-input flex-1 uppercase tracking-widest"
+            class="field-input w-full flex-1 uppercase tracking-widest sm:min-w-0"
             maxlength="8"
             placeholder="Код"
+            autocomplete="off"
             @keyup.enter="joinAsTv"
           />
-          <button type="button" class="btn-ghost text-xs" :disabled="busy" @click="joinAsTv">
+          <button type="button" class="btn-ghost btn-touch w-full shrink-0 sm:w-auto" :disabled="busy" @click="joinAsTv">
             Подключить
           </button>
         </div>

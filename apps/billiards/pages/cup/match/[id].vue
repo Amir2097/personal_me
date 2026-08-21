@@ -163,12 +163,12 @@ const scoringEnabled = computed(() => (canScoreLocal.value || canScorePair.value
   <div>
     <main class="page-shell py-8">
       <div class="flex flex-wrap gap-2">
-        <NuxtLink to="/cup/bracket" class="btn-ghost text-sm">← Сетка</NuxtLink>
-        <NuxtLink to="/cup/tv" class="btn-ghost text-sm">Табло турнира</NuxtLink>
+        <NuxtLink to="/cup/bracket" class="btn-ghost btn-touch">← Сетка</NuxtLink>
+        <NuxtLink to="/cup/tv" class="btn-ghost btn-touch">Табло турнира</NuxtLink>
         <button
           v-if="matchShareUrl && isHost"
           type="button"
-          class="btn-ghost text-sm"
+          class="btn-ghost btn-touch"
           @click="copyMatchLink"
         >
           Ссылка для пары
@@ -212,19 +212,19 @@ const scoringEnabled = computed(() => (canScoreLocal.value || canScorePair.value
             <p class="mt-1 text-sm text-cloth-muted">партии</p>
             <p class="mt-4 text-2xl font-bold">{{ match.ballsA }} <span class="text-sm font-normal text-cloth-muted">шаров</span></p>
             <div class="mt-4 flex flex-wrap gap-2">
-              <button type="button" class="btn-primary text-sm" :disabled="!scoringEnabled" @click="addBall('A')">
+              <button type="button" class="btn-primary btn-touch" :disabled="!scoringEnabled" @click="addBall('A')">
                 + Шар
               </button>
-              <button type="button" class="btn-ghost text-sm" :disabled="!scoringEnabled" @click="undoBall('A')">
+              <button type="button" class="btn-ghost btn-touch" :disabled="!scoringEnabled" @click="undoBall('A')">
                 − Шар
               </button>
-              <button type="button" class="btn-ghost text-sm" :disabled="!scoringEnabled" @click="awardFrame('A')">
+              <button type="button" class="btn-ghost btn-touch" :disabled="!scoringEnabled" @click="awardFrame('A')">
                 Партия A
               </button>
               <button
                 v-if="canClaimA"
                 type="button"
-                class="btn-ghost text-sm"
+                class="btn-ghost btn-touch"
                 :disabled="eventBusy"
                 @click="claim(match.playerAId!)"
               >
@@ -241,19 +241,19 @@ const scoringEnabled = computed(() => (canScoreLocal.value || canScorePair.value
             <p class="mt-1 text-sm text-cloth-muted">партии</p>
             <p class="mt-4 text-2xl font-bold">{{ match.ballsB }} <span class="text-sm font-normal text-cloth-muted">шаров</span></p>
             <div class="mt-4 flex flex-wrap gap-2">
-              <button type="button" class="btn-primary text-sm" :disabled="!scoringEnabled" @click="addBall('B')">
+              <button type="button" class="btn-primary btn-touch" :disabled="!scoringEnabled" @click="addBall('B')">
                 + Шар
               </button>
-              <button type="button" class="btn-ghost text-sm" :disabled="!scoringEnabled" @click="undoBall('B')">
+              <button type="button" class="btn-ghost btn-touch" :disabled="!scoringEnabled" @click="undoBall('B')">
                 − Шар
               </button>
-              <button type="button" class="btn-ghost text-sm" :disabled="!scoringEnabled" @click="awardFrame('B')">
+              <button type="button" class="btn-ghost btn-touch" :disabled="!scoringEnabled" @click="awardFrame('B')">
                 Партия B
               </button>
               <button
                 v-if="canClaimB"
                 type="button"
-                class="btn-ghost text-sm"
+                class="btn-ghost btn-touch"
                 :disabled="eventBusy"
                 @click="claim(match.playerBId!)"
               >
@@ -278,7 +278,7 @@ const scoringEnabled = computed(() => (canScoreLocal.value || canScorePair.value
               <button
                 v-if="!store.shotClock.running"
                 type="button"
-                class="btn-primary text-sm"
+                class="btn-primary btn-touch"
                 :disabled="!canScoreLocal"
                 @click="store.startShotClock()"
               >
@@ -287,13 +287,13 @@ const scoringEnabled = computed(() => (canScoreLocal.value || canScorePair.value
               <button
                 v-else
                 type="button"
-                class="btn-ghost text-sm"
+                class="btn-ghost btn-touch"
                 :disabled="!canScoreLocal"
                 @click="store.pauseShotClock()"
               >
                 Пауза
               </button>
-              <button type="button" class="btn-ghost text-sm" :disabled="!canScoreLocal" @click="store.resetShotClock()">
+              <button type="button" class="btn-ghost btn-touch" :disabled="!canScoreLocal" @click="store.resetShotClock()">
                 Сброс
               </button>
             </div>
@@ -304,11 +304,11 @@ const scoringEnabled = computed(() => (canScoreLocal.value || canScorePair.value
           Матч завершён.
           Победитель: {{ store.playerById(match.winnerId)?.name || '—' }}
         </p>
-        <div v-else-if="scoringEnabled" class="mt-4 flex flex-wrap gap-2">
-          <button type="button" class="btn-ghost text-sm" @click="complete(match.playerAId!)">
+        <div v-else-if="scoringEnabled" class="mt-4 flex flex-col gap-2 sm:flex-row sm:flex-wrap">
+          <button type="button" class="btn-ghost btn-touch w-full sm:w-auto" @click="complete(match.playerAId!)">
             Победа {{ nameA }}
           </button>
-          <button type="button" class="btn-ghost text-sm" @click="complete(match.playerBId!)">
+          <button type="button" class="btn-ghost btn-touch w-full sm:w-auto" @click="complete(match.playerBId!)">
             Победа {{ nameB }}
           </button>
         </div>

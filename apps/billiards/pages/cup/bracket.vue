@@ -44,13 +44,13 @@ const exportExcel = () => {
   <div>
     <main class="page-shell page-shell--wide py-6">
       <div class="flex flex-wrap items-center gap-2">
-        <NuxtLink to="/cup" class="btn-ghost text-sm">← Турнир</NuxtLink>
-        <NuxtLink to="/cup/tv" class="btn-ghost text-sm">Табло</NuxtLink>
-        <NuxtLink to="/cup/history" class="btn-ghost text-sm">История</NuxtLink>
-        <button type="button" class="btn-ghost text-sm" :disabled="history.saving.value" @click="saveHistory">
+        <NuxtLink to="/cup" class="btn-ghost btn-touch">← Турнир</NuxtLink>
+        <NuxtLink to="/cup/tv" class="btn-ghost btn-touch">Табло</NuxtLink>
+        <NuxtLink to="/cup/history" class="btn-ghost btn-touch">История</NuxtLink>
+        <button type="button" class="btn-ghost btn-touch" :disabled="history.saving.value" @click="saveHistory">
           Сохранить в историю
         </button>
-        <button type="button" class="btn-ghost text-sm" @click="exportExcel">Excel</button>
+        <button type="button" class="btn-ghost btn-touch" @click="exportExcel">Excel</button>
       </div>
       <p v-if="saveHint" class="mt-2 text-sm text-cloth-chalk">{{ saveHint }}</p>
 
@@ -86,7 +86,7 @@ const exportExcel = () => {
             v-for="match in playableMatches"
             :key="match.id"
             type="button"
-            class="btn-ghost text-xs"
+            class="btn-ghost btn-touch max-w-full text-left"
             @click="openMatch(match.id)"
           >
             #{{ match.displayNo }} · {{ playerName(match.playerAId) }} — {{ playerName(match.playerBId) }}

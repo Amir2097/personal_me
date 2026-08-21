@@ -190,6 +190,40 @@ h4 {
    Fluid dashboard layout
    ========================================================================== */
 
+/* Full-bleed TV / bare pages — respect notch and home indicator */
+.tv-shell {
+  min-height: 100dvh;
+  padding-top: max(1rem, env(safe-area-inset-top, 0px));
+  padding-right: max(1rem, env(safe-area-inset-right, 0px));
+  padding-bottom: max(1rem, env(safe-area-inset-bottom, 0px));
+  padding-left: max(1rem, env(safe-area-inset-left, 0px));
+}
+
+@media (min-width: 640px) {
+  .tv-shell {
+    padding-top: max(1.25rem, env(safe-area-inset-top, 0px));
+    padding-right: max(1.5rem, env(safe-area-inset-right, 0px));
+    padding-bottom: max(1.25rem, env(safe-area-inset-bottom, 0px));
+    padding-left: max(1.5rem, env(safe-area-inset-left, 0px));
+  }
+}
+
+@media (min-width: 1024px) {
+  .tv-shell {
+    padding-right: max(2rem, env(safe-area-inset-right, 0px));
+    padding-left: max(2rem, env(safe-area-inset-left, 0px));
+  }
+}
+
+/* When page-shell already provides horizontal rhythm */
+.tv-shell--nested {
+  min-height: 100dvh;
+  padding-top: env(safe-area-inset-top, 0px);
+  padding-right: env(safe-area-inset-right, 0px);
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+  padding-left: env(safe-area-inset-left, 0px);
+}
+
 .page-shell {
   @apply mx-auto w-full px-4 sm:px-6 lg:px-8;
   max-width: 1600px;
@@ -480,6 +514,8 @@ html[data-theme='light'] .hero-surface .section-eyebrow {
   -webkit-backdrop-filter: var(--glass-blur);
   backdrop-filter: var(--glass-blur);
   box-shadow: inset 0 -0.5px 0 0 var(--hairline);
+  /* Notch / Dynamic Island */
+  padding-top: env(safe-area-inset-top, 0px);
 }
 
 .header-nav-link {
@@ -495,6 +531,13 @@ html[data-theme='light'] .hero-surface .section-eyebrow {
   transition: color 0.15s ease, background 0.15s ease;
 }
 
+@media (max-width: 767px) {
+  .header-nav-link {
+    min-height: 2.5rem;
+    padding: 0.55rem 0.9rem;
+  }
+}
+
 .header-nav-link:hover {
   color: var(--cloth-chalk);
   background: var(--cloth-card-2);
@@ -508,8 +551,8 @@ html[data-theme='light'] .hero-surface .section-eyebrow {
 
 .header-icon-btn {
   display: inline-flex;
-  height: 2.25rem;
-  width: 2.25rem;
+  height: 2.75rem;
+  width: 2.75rem;
   align-items: center;
   justify-content: center;
   border-radius: 999px;
@@ -539,6 +582,7 @@ html[data-theme='light'] .hero-surface .section-eyebrow {
   margin-top: auto;
   background: var(--cloth-header);
   box-shadow: inset 0 0.5px 0 0 var(--hairline);
+  padding-bottom: env(safe-area-inset-bottom, 0px);
 }
 
 .footer-link {
@@ -633,12 +677,95 @@ html[data-theme='dark'] .btn-primary {
     var(--shadow-card);
 }
 
+/**
+ * Compact scoring controls on the play board.
+ * Phone: ~40px hit area. Desktop: denser but still tappable.
+ */
+.btn-play {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 2.5rem;
+  padding: 0.45rem 0.7rem !important;
+  font-size: 0.75rem !important;
+  font-weight: 600;
+  line-height: 1.15;
+  white-space: nowrap;
+}
+
+@media (min-width: 640px) {
+  .btn-play {
+    min-height: 1.85rem;
+    padding: 0.28rem 0.55rem !important;
+    font-size: 0.6875rem !important;
+  }
+}
+
+/**
+ * Secondary chrome controls (sync, history, match pulpit, nav chips).
+ * Phone-first hit area without shrinking desktop density much.
+ */
+.btn-touch {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 2.75rem;
+  padding-top: 0.55rem !important;
+  padding-bottom: 0.55rem !important;
+  font-size: 0.875rem !important;
+  line-height: 1.2;
+}
+
+@media (min-width: 640px) {
+  .btn-touch {
+    min-height: 2.25rem;
+    padding-top: 0.4rem !important;
+    padding-bottom: 0.4rem !important;
+    font-size: 0.8125rem !important;
+  }
+}
+
+/* Casual ball chips on the phone scoring board */
+.btn-ball {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  min-height: 2.75rem;
+  border-radius: var(--radius-control);
+  border: 1px solid color-mix(in srgb, var(--cloth-chalk) 15%, transparent);
+  padding: 0.55rem 0.85rem;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  transition:
+    border-color 0.15s ease,
+    background 0.15s ease;
+}
+
+.btn-ball:hover:not(:disabled) {
+  border-color: var(--cloth-accent);
+  background: color-mix(in srgb, var(--cloth-accent) 10%, transparent);
+}
+
+.btn-ball:disabled {
+  opacity: 0.4;
+}
+
+@media (min-width: 640px) {
+  .btn-ball {
+    min-height: 2.25rem;
+    padding: 0.45rem 0.75rem;
+    font-size: 0.75rem;
+  }
+}
+
 .field-input {
   @apply px-3.5 py-2 outline-none transition;
   border-radius: var(--radius-field);
   border: 1px solid transparent;
   background: var(--cloth-input);
   color: var(--cloth-chalk);
+  /* ≥16px avoids iOS zoom-on-focus */
+  font-size: 1rem;
   box-shadow: inset 0 0 0 0.5px var(--hairline);
 }
 
@@ -701,6 +828,7 @@ html[data-theme='dark'] .mode-option__badge {
   position: relative;
   width: 100%;
   height: min(72vh, 820px);
+  height: min(72dvh, 820px);
   overflow: hidden;
   border-radius: var(--radius-card);
   background:
@@ -711,8 +839,15 @@ html[data-theme='dark'] .mode-option__badge {
     inset 0 0 0 0.5px var(--hairline),
     var(--shadow-card);
   cursor: grab;
-  touch-action: pan-y;
+  /* Dedicated pan surface — avoid fighting the page scroll while dragging */
+  touch-action: none;
   user-select: none;
+}
+
+@media (max-width: 640px) {
+  .bracket-board__viewport {
+    height: min(58dvh, 520px);
+  }
 }
 
 .bracket-board__viewport--dragging {
@@ -1022,8 +1157,9 @@ html[data-theme='dark'] .mode-option__badge {
 .tv-topbar__room-label .field-input {
   margin-top: 0.25rem;
   width: 100%;
-  padding-top: 0.4rem;
-  padding-bottom: 0.4rem;
+  min-height: 2.75rem;
+  padding-top: 0.55rem;
+  padding-bottom: 0.55rem;
   text-transform: uppercase;
   letter-spacing: 0.16em;
 }
@@ -1084,10 +1220,20 @@ html[data-theme='dark'] .mode-option__badge {
 
 .tv-topbar__timer-actions .btn-primary,
 .tv-topbar__timer-actions .btn-ghost {
-  padding: 0.3rem 0.75rem;
-  font-size: 0.7rem;
+  min-height: 2.5rem;
+  padding: 0.45rem 0.85rem;
+  font-size: 0.8125rem;
   line-height: 1.2;
   white-space: nowrap;
+}
+
+@media (min-width: 900px) {
+  .tv-topbar__timer-actions .btn-primary,
+  .tv-topbar__timer-actions .btn-ghost {
+    min-height: 1.85rem;
+    padding: 0.3rem 0.75rem;
+    font-size: 0.7rem;
+  }
 }
 
 .tv-topbar__meta {
@@ -1193,7 +1339,9 @@ html[data-theme='dark'] .mode-option__badge {
 
 /* Floating round timer */
 .timer-panel {
-  @apply fixed bottom-4 right-4 z-40 px-5 py-3;
+  @apply fixed z-40 px-5 py-3;
+  right: max(1rem, env(safe-area-inset-right, 0px));
+  bottom: max(1rem, env(safe-area-inset-bottom, 0px));
   border: 1px solid transparent;
   border-radius: var(--radius-card);
   -webkit-backdrop-filter: var(--glass-blur);
@@ -1223,7 +1371,11 @@ html[data-theme='dark'] .mode-option__badge {
 }
 
 .timer-panel__btn {
-  @apply inline-flex items-center gap-1 px-3 py-1 text-[11px] font-semibold transition;
+  @apply inline-flex items-center gap-1 px-3 font-semibold transition;
+  min-height: 2.25rem;
+  padding-top: 0.35rem;
+  padding-bottom: 0.35rem;
+  font-size: 0.75rem;
   border-radius: 999px;
   box-shadow: inset 0 0 0 0.5px currentColor;
   opacity: 0.92;

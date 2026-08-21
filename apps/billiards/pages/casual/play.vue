@@ -92,21 +92,21 @@ const formatPoints = (value: number) => value.toFixed(1).replace(/\.0$/, '')
         <div v-if="!sessionEnded" class="flex flex-wrap gap-2">
           <button
             type="button"
-            class="btn-ghost inline-flex items-center gap-1.5 text-sm"
+            class="btn-ghost btn-touch inline-flex items-center gap-1.5"
             :disabled="!store.events.length"
             @click="store.undoLast()"
           >
             <AppIcon name="undo" size="sm" /> Отмена
           </button>
-          <NuxtLink to="/casual" class="btn-ghost inline-flex items-center gap-1.5 text-sm">
+          <NuxtLink to="/casual" class="btn-ghost btn-touch inline-flex items-center gap-1.5">
             <AppIcon name="settings" size="sm" /> Настройки
           </NuxtLink>
-          <NuxtLink to="/tv" class="btn-ghost inline-flex items-center gap-1.5 text-sm">
+          <NuxtLink to="/tv" class="btn-ghost btn-touch inline-flex items-center gap-1.5">
             <AppIcon name="tv" size="sm" /> Табло
           </NuxtLink>
           <button
             type="button"
-            class="btn-primary inline-flex items-center gap-1.5 text-sm"
+            class="btn-primary btn-touch inline-flex items-center gap-1.5"
             :disabled="endBusy"
             @click="endSession"
           >
@@ -194,7 +194,7 @@ const formatPoints = (value: number) => value.toFixed(1).replace(/\.0$/, '')
 
           <button
             type="button"
-            class="btn-primary mt-4 text-sm"
+            class="btn-primary btn-touch mt-4 w-full sm:w-auto"
             :disabled="partyTotal <= 0"
             @click="settleParty"
           >
@@ -278,7 +278,7 @@ const formatPoints = (value: number) => value.toFixed(1).replace(/\.0$/, '')
                 v-for="ball in store.casual.balls"
                 :key="ball.id"
                 type="button"
-                class="inline-flex items-center gap-1.5 rounded-lg border border-white/15 px-3 py-2 text-xs font-semibold transition hover:border-cloth-accent hover:bg-cloth-accent/10 disabled:opacity-40"
+                class="btn-ball"
                 :style="{ boxShadow: `inset 0 -3px 0 ${ball.color}` }"
                 :disabled="ball.partyRole === 'rack' && rackComplete"
                 @click="potBall(player.id, ball.id)"
@@ -297,7 +297,7 @@ const formatPoints = (value: number) => value.toFixed(1).replace(/\.0$/, '')
 
             <button
               type="button"
-              class="btn-ghost mt-3 w-full border border-red-500/30 text-xs text-red-300 hover:border-red-400 hover:bg-red-500/10"
+              class="btn-ghost btn-touch mt-3 w-full border border-red-500/30 text-red-300 hover:border-red-400 hover:bg-red-500/10"
               @click="applyFoul(player.id)"
             >
               Фол
