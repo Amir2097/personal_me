@@ -41,7 +41,7 @@ const restoreToActive = async () => {
 <template>
   <div>
     <main class="page-shell py-8">
-      <NuxtLink to="/cup/history" class="btn-ghost text-sm">← История</NuxtLink>
+      <NuxtLink to="/cup/history" class="btn-ghost btn-touch">← История</NuxtLink>
 
       <p v-if="loading" class="mt-6 text-sm text-cloth-chalk">Загрузка…</p>
       <p v-else-if="error" class="card-surface mt-6 p-5 text-sm text-red-300">{{ error }}</p>
@@ -58,7 +58,7 @@ const restoreToActive = async () => {
               Победитель: {{ nameOf(snapshot.tournament.winnerId) }}
             </p>
           </div>
-          <button type="button" class="btn-primary text-sm" @click="restoreToActive">
+          <button type="button" class="btn-primary btn-touch w-full sm:w-auto" @click="restoreToActive">
             Добавить в активные
           </button>
         </section>

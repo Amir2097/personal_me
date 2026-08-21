@@ -170,8 +170,8 @@ onBeforeUnmount(() => {
         </template>
       </p>
       <div class="flex flex-wrap gap-2">
-        <button type="button" class="btn-ghost text-xs" @click="fitView">Вписать</button>
-        <button type="button" class="btn-ghost text-xs" @click="resetView">100%</button>
+        <button type="button" class="btn-ghost btn-touch" @click="fitView">Вписать</button>
+        <button type="button" class="btn-ghost btn-touch" @click="resetView">100%</button>
       </div>
     </div>
 

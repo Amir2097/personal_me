@@ -163,19 +163,19 @@ const logout = async () => {
 
           <h1 class="font-display text-3xl font-bold">Админка</h1>
 
-          <button type="button" class="btn-ghost text-xs" @click="logout">Выйти</button>
+          <button type="button" class="btn-ghost btn-touch" @click="logout">Выйти</button>
 
         </div>
 
         <nav class="mt-4 flex flex-wrap gap-2">
 
-          <NuxtLink to="/admin" class="btn-ghost text-xs">Обзор</NuxtLink>
+          <NuxtLink to="/admin" class="btn-ghost btn-touch">Обзор</NuxtLink>
 
-          <NuxtLink to="/admin/seo" class="btn-ghost text-xs">SEO и сайт</NuxtLink>
+          <NuxtLink to="/admin/seo" class="btn-ghost btn-touch">SEO и сайт</NuxtLink>
 
-          <NuxtLink to="/admin/users" class="btn-ghost text-xs">Пользователи</NuxtLink>
-          <NuxtLink to="/admin/audit" class="btn-ghost text-xs">Журнал</NuxtLink>
-          <NuxtLink to="/admin/security" class="btn-ghost text-xs">2FA</NuxtLink>
+          <NuxtLink to="/admin/users" class="btn-ghost btn-touch">Пользователи</NuxtLink>
+          <NuxtLink to="/admin/audit" class="btn-ghost btn-touch">Журнал</NuxtLink>
+          <NuxtLink to="/admin/security" class="btn-ghost btn-touch">2FA</NuxtLink>
 
         </nav>
 

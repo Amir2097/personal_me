@@ -93,7 +93,7 @@ useHead({ title: 'Безопасность · 2FA' })
           Текущий код 2FA
           <input v-model="disableCode" class="field-input mt-1 w-full" inputmode="numeric" maxlength="8" />
         </label>
-        <button type="button" class="btn-ghost text-sm" :disabled="busy" @click="confirmDisable">
+        <button type="button" class="btn-ghost btn-touch" :disabled="busy" @click="confirmDisable">
           Отключить 2FA
         </button>
       </div>
@@ -113,13 +113,13 @@ useHead({ title: 'Безопасность · 2FA' })
           Код из приложения
           <input v-model="enableCode" class="field-input mt-1 w-full" inputmode="numeric" maxlength="8" />
         </label>
-        <button type="button" class="btn-primary text-sm" :disabled="busy" @click="confirmEnable">
+        <button type="button" class="btn-primary btn-touch" :disabled="busy" @click="confirmEnable">
           Подтвердить и включить
         </button>
       </div>
 
       <div v-else-if="status" class="mt-5">
-        <button type="button" class="btn-primary text-sm" :disabled="busy" @click="startSetup">
+        <button type="button" class="btn-primary btn-touch" :disabled="busy" @click="startSetup">
           Настроить 2FA
         </button>
       </div>

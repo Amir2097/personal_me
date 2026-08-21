@@ -51,7 +51,7 @@ useHead({ title: 'Журнал действий' })
           <h2 class="font-display text-xl font-bold">Журнал действий</h2>
           <p class="mt-1 text-sm text-cloth-muted">Кто менял роли, SEO и открывал legacy-доступ.</p>
         </div>
-        <button type="button" class="btn-ghost text-xs" :disabled="busy" @click="refresh">Обновить</button>
+        <button type="button" class="btn-ghost btn-touch" :disabled="busy" @click="refresh">Обновить</button>
       </div>
       <p v-if="error" class="mt-3 text-sm text-amber-700">{{ error }}</p>
       <table class="mt-4 w-full min-w-[720px] text-left text-sm">

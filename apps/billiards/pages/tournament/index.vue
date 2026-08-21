@@ -272,7 +272,7 @@ const startPlay = () => {
                     · внёс {{ store.playerPaidAmount(player.id).toLocaleString('ru-RU') }} ₽
                   </p>
                 </div>
-                <button type="button" class="btn-ghost shrink-0 py-1 text-xs" @click="store.removePlayer(player.id)">
+                <button type="button" class="btn-ghost btn-play shrink-0" @click="store.removePlayer(player.id)">
                   ×
                 </button>
               </div>
@@ -281,11 +281,11 @@ const startPlay = () => {
                   v-for="cat in categories"
                   :key="cat"
                   type="button"
-                  class="rounded px-2 py-0.5 text-xs"
+                  class="btn-chip"
                   :class="
                     player.category === cat
-                      ? 'bg-cloth-accent text-[color:var(--cloth-deep)]'
-                      : 'border border-[color:var(--cloth-border)]'
+                      ? 'btn-chip--active'
+                      : ''
                   "
                   :title="groupHint(cat)"
                   @click="setCategory(player.id, cat)"
@@ -433,7 +433,7 @@ const startPlay = () => {
                   </span>
                 </span>
                 <select
-                  class="field-input px-2 py-1 text-xs"
+                  class="field-input min-w-[7rem] !px-2 text-sm"
                   :value="table.id"
                   @change="onMovePlayer(player.id, $event)"
                 >

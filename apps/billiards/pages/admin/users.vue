@@ -62,7 +62,7 @@ useHead({ title: 'Пользователи' })
             </td>
             <td class="py-3 pr-3">
               <select
-                class="field-input py-1 text-xs"
+                class="field-input text-sm"
                 :value="user.role"
                 @change="patchUser(user.username, { role: ($event.target as HTMLSelectElement).value })"
               >

@@ -117,7 +117,7 @@ onMounted(() => {
 
         <p v-if="error" class="text-sm text-amber-700">{{ error }}</p>
         <p v-if="message" class="text-sm text-cloth-accent">{{ message }}</p>
-        <button type="submit" class="btn-primary text-sm" :disabled="busy || !admin.unlocked.value">
+        <button type="submit" class="btn-primary btn-touch" :disabled="busy || !admin.unlocked.value">
           {{ busy ? '…' : 'Сохранить' }}
         </button>
       </form>

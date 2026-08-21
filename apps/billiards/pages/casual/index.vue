@@ -155,9 +155,9 @@ const moveDown = (index: number) => {
               </p>
             </div>
             <div class="flex gap-1">
-              <button type="button" class="btn-ghost px-2 py-1 text-xs" @click="moveUp(index)">↑</button>
-              <button type="button" class="btn-ghost px-2 py-1 text-xs" @click="moveDown(index)">↓</button>
-              <button type="button" class="btn-ghost px-2 py-1 text-xs" @click="store.removePlayer(player.id)">
+              <button type="button" class="btn-ghost btn-play" @click="moveUp(index)">↑</button>
+              <button type="button" class="btn-ghost btn-play" @click="moveDown(index)">↓</button>
+              <button type="button" class="btn-ghost btn-play" @click="store.removePlayer(player.id)">
                 удалить
               </button>
             </div>
@@ -192,20 +192,20 @@ const moveDown = (index: number) => {
             <span class="h-4 w-4 rounded-full border border-white/20" :style="{ background: ball.color }" />
             <input
               :value="ball.label"
-              class="min-w-[8rem] flex-1 rounded border border-white/10 bg-transparent px-2 py-1"
+              class="field-input min-w-[8rem] flex-1 !px-2"
               @change="onBallLabelChange(ball.id, $event)"
             />
             <input
               :value="ball.price"
               type="number"
               step="10"
-              class="w-24 rounded border border-white/10 bg-transparent px-2 py-1"
+              class="field-input w-24 !px-2"
               @change="onBallPriceFieldChange(ball.id, $event)"
             />
             <span class="text-xs text-cloth-muted">₽</span>
             <select
               :value="ball.partyRole"
-              class="rounded border border-white/10 bg-transparent px-2 py-1 text-xs"
+              class="field-input !px-2 text-sm"
               :disabled="ball.id === 'standard'"
               @change="onBallRoleChange(ball.id, $event)"
             >
@@ -215,7 +215,7 @@ const moveDown = (index: number) => {
             <button
               v-if="!['standard', 'yellow', 'red', 'black'].includes(ball.id)"
               type="button"
-              class="btn-ghost px-2 py-1 text-xs text-red-300 hover:border-red-400/40"
+              class="btn-ghost btn-play text-red-300 hover:border-red-400/40"
               @click="store.removeBall(ball.id)"
             >
               удалить

@@ -12,7 +12,7 @@ onMounted(() => {
 <template>
   <div>
     <main class="page-shell py-8">
-      <NuxtLink to="/cup" class="btn-ghost text-sm">← Турнир</NuxtLink>
+      <NuxtLink to="/cup" class="btn-ghost btn-touch">← Турнир</NuxtLink>
 
       <section class="hero-surface mt-4 rounded-2xl px-5 py-5 sm:px-6">
         <h1 class="font-display text-3xl font-bold text-cloth-chalk">История турниров</h1>
