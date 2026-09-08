@@ -13,7 +13,12 @@ import {
   settleCasualParty
 } from '../utils/casual'
 import { computeDebtTransfers } from '../utils/debts'
-import type { Player, SpecialBall } from '../types/kolkhoz'
+import {
+  canRemoveCasualBall,
+  DEFAULT_CASUAL_BALLS,
+  type Player,
+  type SpecialBall
+} from '../types/kolkhoz'
 
 const player = (partial: Partial<Player> & Pick<Player, 'id' | 'name'>): Player => ({
   category: 2,
@@ -192,5 +197,32 @@ describe('pot and settle flow', () => {
     expect(settled.players.find((item) => item.id === 'd')!.balance).toBe(-200)
     expect(settled.players.map((item) => item.id)).toEqual(['b', 'c', 'd', 'a'])
     expect(settled.party.number).toBe(2)
+  })
+})
+
+describe('canRemoveCasualBall', () => {
+  const balls = () => DEFAULT_CASUAL_BALLS.map((ball) => ({ ...ball }))
+
+  it('allows removing yellow/red/black before play', () => {
+    expect(canRemoveCasualBall(balls(), 'yellow')).toBe(true)
+    expect(canRemoveCasualBall(balls(), 'red')).toBe(true)
+    expect(canRemoveCasualBall(balls(), 'black')).toBe(true)
+  })
+
+  it('never allows removing the standard ball', () => {
+    expect(canRemoveCasualBall(balls(), 'standard')).toBe(false)
+  })
+
+  it('blocks removal while party has activity', () => {
+    expect(canRemoveCasualBall(balls(), 'yellow', { partyHasActivity: true })).toBe(false)
+  })
+
+  it('blocks removing the last rack ball', () => {
+    const onlyStandard: SpecialBall[] = [
+      { id: 'standard', label: 'Обычный', price: 100, color: '#fff', partyRole: 'rack' },
+      { id: 'custom', label: 'Доп', price: 50, color: '#888', partyRole: 'extra' }
+    ]
+    expect(canRemoveCasualBall(onlyStandard, 'standard')).toBe(false)
+    expect(canRemoveCasualBall(onlyStandard, 'custom')).toBe(true)
   })
 })

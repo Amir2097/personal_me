@@ -2,6 +2,7 @@ import { defineStore } from 'pinia'
 import {
   createEmptyState,
   normalizeState,
+  canRemoveCasualBall,
   type BankState,
   type BuyInKind,
   type CasualPenaltyConfig,
@@ -318,12 +319,8 @@ export const useKolkhozStore = defineStore('kolkhoz', {
       this.persist()
     },
     removeBall(ballId: string) {
-      const ball = this.casual.balls.find((b) => b.id === ballId)
-      if (!ball) return
-      // Разрешаем удалять только пользовательские шары.
-      if (['standard', 'yellow', 'red', 'black'].includes(ballId)) return
-      // Настройки предполагаются до игры; если в партию уже есть активность — блокируем.
-      if (this.casual.party && hasOpenPartyActivity(this.casual.party)) return
+      const partyActive = Boolean(this.casual.party && hasOpenPartyActivity(this.casual.party))
+      if (!canRemoveCasualBall(this.casual.balls, ballId, { partyHasActivity: partyActive })) return
       this.casual.balls = this.casual.balls.filter((b) => b.id !== ballId)
       this.persist()
     },

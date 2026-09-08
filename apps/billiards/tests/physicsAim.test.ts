@@ -44,7 +44,9 @@ describe('physicsAim batch-1 ideal shots', () => {
     'ex_01_direct_target',
     'ex_02_cut_shot_3_4',
     'ex_03_stop_shot',
-    'ex_17_short_rail_pot'
+    'ex_16_follow_shot',
+    'ex_17_short_rail_pot',
+    'ex_18_thin_cut_corner'
   ]
 
   for (const id of batch) {

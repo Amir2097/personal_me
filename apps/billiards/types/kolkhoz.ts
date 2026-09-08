@@ -224,6 +224,25 @@ export const DEFAULT_CASUAL_BALLS: SpecialBall[] = [
   { id: 'black', label: 'Чёрный', price: 300, color: '#111827', partyRole: 'rack' }
 ]
 
+/** Always kept — at least one rack ball for the pyramid of 16. */
+export const PROTECTED_CASUAL_BALL_IDS = ['standard'] as const
+
+export const canRemoveCasualBall = (
+  balls: SpecialBall[],
+  ballId: string,
+  options?: { partyHasActivity?: boolean }
+): boolean => {
+  if ((PROTECTED_CASUAL_BALL_IDS as readonly string[]).includes(ballId)) return false
+  if (options?.partyHasActivity) return false
+  const ball = balls.find((item) => item.id === ballId)
+  if (!ball) return false
+  if (ball.partyRole === 'rack') {
+    const remainingRack = balls.filter((item) => item.partyRole === 'rack' && item.id !== ballId)
+    if (!remainingRack.length) return false
+  }
+  return true
+}
+
 export const normalizeCasualBall = (ball: Partial<SpecialBall>, tableBallPrice: number): SpecialBall => ({
   id: ball.id || uid(),
   label: ball.label || 'Шар',

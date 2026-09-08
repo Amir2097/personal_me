@@ -1,5 +1,7 @@
 <script setup lang="ts">
 import type { CasualBallPartyRole, CasualPenaltyMode } from '~/types/kolkhoz'
+import { canRemoveCasualBall } from '~/types/kolkhoz'
+import { hasOpenPartyActivity } from '~/utils/casual'
 import { penaltyModeLabel } from '~/utils/casualPenalties'
 
 const store = useKolkhozStore()
@@ -10,6 +12,13 @@ const stakePrice = ref<number | ''>('')
 onMounted(() => {
   if (!store.mode) store.setMode('casual')
 })
+
+const partyHasActivity = computed(() =>
+  Boolean(store.casual.party && hasOpenPartyActivity(store.casual.party))
+)
+
+const canDeleteBall = (ballId: string) =>
+  canRemoveCasualBall(store.casual.balls, ballId, { partyHasActivity: partyHasActivity.value })
 
 const add = () => {
   store.addPlayer({
@@ -170,7 +179,8 @@ const moveDown = (index: number) => {
           <AppIcon name="ball" class="text-cloth-accent" /> Шары и цены
         </h3>
         <p class="mt-1 text-xs text-cloth-muted">
-          Базовая ставка стола и цена каждого шара. Для каждого цвета выберите:
+          Базовая ставка стола и цена каждого шара. Цветные можно удалить, если играете без них —
+          «Обычный» остаётся для пирамиды из 16. Для каждого цвета выберите:
           <strong class="text-cloth-chalk">в пирамиду (16)</strong> — занимает слот раскладки;
           <strong class="text-cloth-chalk">дополнительно</strong> — сверх 16, не двигает счётчик пирамиды.
         </p>
@@ -213,7 +223,7 @@ const moveDown = (index: number) => {
               <option value="extra">дополнительно</option>
             </select>
             <button
-              v-if="!['standard', 'yellow', 'red', 'black'].includes(ball.id)"
+              v-if="canDeleteBall(ball.id)"
               type="button"
               class="btn-ghost btn-play text-red-300 hover:border-red-400/40"
               @click="store.removeBall(ball.id)"
